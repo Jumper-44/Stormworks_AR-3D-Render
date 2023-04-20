@@ -48,8 +48,8 @@ do
         simulator:setInputNumber(4, (simulator:getSlider(4)) * math.pi*2)
         simulator:setInputNumber(5, (simulator:getSlider(5)) * math.pi*2)
         simulator:setInputNumber(6, (simulator:getSlider(6)) * math.pi*2)
-        simulator:setInputNumber(7, 0.0)
-        simulator:setInputNumber(8, 0.0)
+        simulator:setInputNumber(7, simulator:getSlider(7))
+        simulator:setInputNumber(8, simulator:getSlider(8))
 
         -- NEW! button/slider options from the UI
         simulator:setInputBool(31, simulator:getIsClicked(1))       -- if button 1 is clicked, provide an ON pulse for input.getBool(31)
