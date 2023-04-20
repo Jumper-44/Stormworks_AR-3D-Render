@@ -42,9 +42,9 @@ do
         simulator:setInputNumber(4, screenConnection.touchY)
         --]]
 
-        simulator:setInputNumber(1, 0)-- (simulator:getSlider(1) - 0.5) * 5)
-        simulator:setInputNumber(2, 0)-- (simulator:getSlider(2) - 0.5) * 5)
-        simulator:setInputNumber(3, (simulator:getSlider(3) - 0.5) * 20)
+        simulator:setInputNumber(1, (simulator:getSlider(1) - 0) * 10)
+        simulator:setInputNumber(2, (simulator:getSlider(2) - 0) * 10)
+        simulator:setInputNumber(3, (simulator:getSlider(3) - 0.5) * 25)
         simulator:setInputNumber(4, (simulator:getSlider(4)) * math.pi*2)
         simulator:setInputNumber(5, (simulator:getSlider(5)) * math.pi*2)
         simulator:setInputNumber(6, (simulator:getSlider(6)) * math.pi*2)
@@ -60,14 +60,16 @@ do
 end
 ---@endsection
 
-
 --[====[ IN-GAME CODE ]====]
+
+
+
+
 
 --#region Initialization
 local tau = math.pi*2
 local Clamp = function(x,s,l) return x < s and s or x > l and l or x end
 
--- Assuming matrix multiplication is possible
 local MatrixMultiplication = function(m1,m2)
     local r = {}
     for i=1,#m2 do
@@ -104,19 +106,20 @@ end
 -- Vector3 Class
 local function Vec3(x,y,z) return
     {x=x or 0; y=y or 0; z=z or 0;
-    add =   function(a,b) return Vec3(a.x+b.x, a.y+b.y, a.z+b.z) end;
-    sub =   function(a,b) return Vec3(a.x-b.x, a.y-b.y, a.z-b.z) end;
-    scale = function(a,b) return Vec3(a.x*b, a.y*b, a.z*b) end;
-    dot =   function(a,b) return (a.x*b.x + a.y*b.y + a.z*b.z) end;
-    cross = function(a,b) return Vec3(a.y*b.z-a.z*b.y, a.z*b.x-a.x*b.z, a.x*b.y-a.y*b.x) end;
-    len =   function(a) return a:dot(a)^0.5 end;
-    normalize = function(a) return a:scale(1/a:len()) end;
-    unpack = function(a, ...) return a.x, a.y, a.z, ... end}
+    add =       function(a,b)   return Vec3(a.x+b.x, a.y+b.y, a.z+b.z) end;
+    sub =       function(a,b)   return Vec3(a.x-b.x, a.y-b.y, a.z-b.z) end;
+    scale =     function(a,b)   return Vec3(a.x*b, a.y*b, a.z*b) end;
+    dot =       function(a,b)   return (a.x*b.x + a.y*b.y + a.z*b.z) end;
+    cross =     function(a,b)   return Vec3(a.y*b.z-a.z*b.y, a.z*b.x-a.x*b.z, a.x*b.y-a.y*b.x) end;
+    len =       function(a)     return a:dot(a)^0.5 end;
+    normalize = function(a)     return a:scale(1/a:len()) end;
+    unpack =    function(a,...) return a.x, a.y, a.z, ... end}
 end
 
 local currentGPS, previousGPS = Vec3(), Vec3() -- Y-axis is up
 local currentAng, previousAng = Vec3(), Vec3() -- Euler angles
 local isRendering, isFemale = false, false
+local perspectiveProjectionMatrix, rotationMatrixYXZ, cameraTransformMatrix, cameraTranslation = {}, {}, {}, Vec3()
 local OFFSET = {}
 --#endregion Initialization
 
@@ -212,34 +215,37 @@ function onTick()
             -- No translationMatrix due to just subtracting cameraTranslation before matrix multiplication of the cameraTransform
             cameraTranslation = currentGPS:add(MatMul3xVec3(rotationMatrixYXZ, OFFSET.GPS_to_camera:add(head_position_offset)))
 
-            cameraTransform = MatrixMultiplication(perspectiveProjectionMatrix, MatrixTranspose(rotationMatrixYXZ))
+            cameraTransformMatrix = MatrixMultiplication(perspectiveProjectionMatrix, MatrixTranspose(rotationMatrixYXZ))
         end
 
         for i = 1, 3 do
             for j = 1, 4 do
-                output.setNumber((i-1)*4 + j, cameraTransform[i][j])
+                output.setNumber((i-1)*4 + j, cameraTransformMatrix[i][j])
             end
         end
 
-        output.setNumber(13, cameraTransform[4][3])
+        output.setNumber(13, cameraTransformMatrix[4][3])
         output.setNumber(14, cameraTranslation.x)
         output.setNumber(15, cameraTranslation.y)
         output.setNumber(16, cameraTranslation.z)
     end
 
-
 end
 
 
--- [[ Debug
+--[[ Debug
 local axisPoints = {{0,0,0,1}, {1,0,0,1}, {0,1,0,1}, {0,0,1,1}}
 local axisColor = {{255,0,0,150}, {0,255,0,150}, {0,0,255,150}}
 local drawBuffer = {}
 
 function draw(points)
     local temp = {}
-    for i = 1, #points do temp[i] = {points[i][1] - cameraTranslation.x, points[i][2] - cameraTranslation.y, points[i][3] - cameraTranslation.z, points[i][4]} end
-    temp = MatrixMultiplication(cameraTransform, temp)
+
+    for i = 1, #points do
+        temp[i] = {points[i][1] - cameraTranslation.x, points[i][2] - cameraTranslation.y, points[i][3] - cameraTranslation.z, points[i][4]}
+    end
+    temp = MatrixMultiplication(cameraTransformMatrix, temp)
+
     for i = 1, #points do
         local x,y,z,w = table.unpack(temp[i])
         if 0<=z and z<=w then -- Point is between near and far plane
