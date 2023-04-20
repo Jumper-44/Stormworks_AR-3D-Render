@@ -17,7 +17,7 @@
 do
     ---@type Simulator -- Set properties and screen sizes here - will run once when the script is loaded
     simulator = simulator
-    simulator:setScreen(1, "3x3")
+    simulator:setScreen(1, "5x5")
     simulator:setProperty("w", 160)
     simulator:setProperty("h", 160)
     simulator:setProperty("near", 0.25)
@@ -34,7 +34,7 @@ do
 
         -- touchscreen defaults
         local screenConnection = simulator:getTouchScreen(1)
-        simulator:setInputBool(1, screenConnection.isTouched)
+        simulator:setInputBool(1, true) -- screenConnection.isTouched)
         --[[
         simulator:setInputNumber(1, screenConnection.width)
         simulator:setInputNumber(2, screenConnection.height)
@@ -42,20 +42,20 @@ do
         simulator:setInputNumber(4, screenConnection.touchY)
         --]]
 
-        simulator:setInputNumber(1, 100)
-        simulator:setInputNumber(2, 100)
-        simulator:setInputNumber(3, 100)
-        simulator:setInputNumber(4, 100)
-        simulator:setInputNumber(5, 100)
-        simulator:setInputNumber(6, 0.2)
-        simulator:setInputNumber(7, 0.3)
+        simulator:setInputNumber(1, 0)-- (simulator:getSlider(1) - 0.5) * 5)
+        simulator:setInputNumber(2, 0)-- (simulator:getSlider(2) - 0.5) * 5)
+        simulator:setInputNumber(3, (simulator:getSlider(3) - 0.5) * 20)
+        simulator:setInputNumber(4, (simulator:getSlider(4)) * math.pi*2)
+        simulator:setInputNumber(5, (simulator:getSlider(5)) * math.pi*2)
+        simulator:setInputNumber(6, (simulator:getSlider(6)) * math.pi*2)
+        simulator:setInputNumber(7, 0.0)
+        simulator:setInputNumber(8, 0.0)
 
         -- NEW! button/slider options from the UI
         simulator:setInputBool(31, simulator:getIsClicked(1))       -- if button 1 is clicked, provide an ON pulse for input.getBool(31)
-        simulator:setInputNumber(31, simulator:getSlider(1))        -- set input 31 to the value of slider 1
 
         simulator:setInputBool(32, simulator:getIsToggled(2))       -- make button 2 a toggle, for input.getBool(32)
-        simulator:setInputNumber(32, simulator:getSlider(2) * 50)   -- set input 32 to the value from slider 2 * 50
+
     end;
 end
 ---@endsection
@@ -156,9 +156,9 @@ function onTick()
         isFemale = input.getBool(2)
 
         currentGPS = Vec3(input.getNumber(1), input.getNumber(2), input.getNumber(3))
-        currentAng = Vec3(input.getNumber(3), input.getNumber(4), input.getNumber(5))
+        currentAng = Vec3(input.getNumber(4), input.getNumber(5), input.getNumber(6))
 
-        local lookX, lookY = input.getNumber(6), input.getNumber(7)
+        local lookX, lookY = input.getNumber(7), input.getNumber(8)
 
         --{ Position & Rotation Estimation }--
         currentGPS, previousGPS = currentGPS:add( currentGPS:sub(previousGPS):scale(OFFSET.tick) ), currentGPS
@@ -202,10 +202,10 @@ function onTick()
 
             -- http://www.songho.ca/opengl/gl_anglestoaxes.html
             rotationMatrixYXZ = {
-                {cy*cz + sx*sy*sz,      sx*sy*cz - cy*sz,       sy*cx,      0},
-                {cx*sz,                 cx*cz,                  -sx,        0},
-                {cy*sx*sz - sy*cz,      sy*sz + cy*sx*cz,       cx*cy,      0},
-                {0,                     0,                      0,          1}
+                {cy*cz + sx*sy*sz,      cx*sz,      cy*sx*sz - sy*cz,       0},
+                {sx*sy*cz - cy*sz,      cx*cz,      sy*sz + cy*sx*cz,       0},
+                {sy*cx,                 -sx,        cx*cy,                  0},
+                {0,                     0,          0,                      1}
             }
             -----------------------------------
 
@@ -230,8 +230,39 @@ function onTick()
 
 end
 
---[[ Debug
-function onDraw()
 
+-- [[ Debug
+local axisPoints = {{0,0,0,1}, {1,0,0,1}, {0,1,0,1}, {0,0,1,1}}
+local axisColor = {{255,0,0,150}, {0,255,0,150}, {0,0,255,150}}
+local drawBuffer = {}
+
+function draw(points)
+    local temp = {}
+    for i = 1, #points do temp[i] = {points[i][1] - cameraTranslation.x, points[i][2] - cameraTranslation.y, points[i][3] - cameraTranslation.z, points[i][4]} end
+    temp = MatrixMultiplication(cameraTransform, temp)
+    for i = 1, #points do
+        local x,y,z,w = table.unpack(temp[i])
+        if 0<=z and z<=w then -- Point is between near and far plane
+            w = 1/w
+            drawBuffer[i] = {x*w*80 + 80, y*w*80 + 80, z*w}
+        else
+            drawBuffer[i] = false
+        end
+    end
+end
+
+function onDraw()
+    if isRendering then
+        draw(axisPoints)
+
+        if drawBuffer[1] then
+            for i = 1, 3 do
+                screen.setColor(table.unpack(axisColor[i]))
+                if drawBuffer[i+1] then
+                    screen.drawLine(drawBuffer[1][1], drawBuffer[1][2], drawBuffer[i+1][1], drawBuffer[i+1][2])
+                end
+            end
+        end
+    end
 end
 --]]
