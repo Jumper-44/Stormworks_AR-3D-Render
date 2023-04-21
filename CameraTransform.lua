@@ -21,7 +21,7 @@ do
     simulator:setProperty("w", 160)
     simulator:setProperty("h", 160)
     simulator:setProperty("near", 0.25)
-    simulator:setProperty("renderDistance", 1E3)
+    simulator:setProperty("renderDistance", 1000)
     simulator:setProperty("sizeX", 0.7)
     simulator:setProperty("sizeY", 0.7)
     simulator:setProperty("positionOffsetX", 0)

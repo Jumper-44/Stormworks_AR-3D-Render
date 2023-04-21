@@ -17,8 +17,12 @@
 do
     ---@type Simulator -- Set properties and screen sizes here - will run once when the script is loaded
     simulator = simulator
-    simulator:setScreen(1, "3x3")
-    simulator:setProperty("ExampleNumberProperty", 123)
+    simulator:setScreen(1, "5x5")
+
+    simulator:setProperty("w", 160)
+    simulator:setProperty("h", 160)
+    simulator:setProperty("pxOffsetX", 0)
+    simulator:setProperty("pxOffsetY", 0)
 
     -- Runs every tick just before onTick; allows you to simulate the inputs changing
     ---@param simulator Simulator Use simulator:<function>() to set inputs etc.
@@ -28,23 +32,26 @@ do
         -- touchscreen defaults
         local screenConnection = simulator:getTouchScreen(1)
         simulator:setInputBool(1, true) -- screenConnection.isTouched)
-        simulator:setInputNumber(1, 1.6398879)
-        simulator:setInputNumber(6, -1.6398879)
-        simulator:setInputNumber(10, -0.076768)
-        simulator:setInputNumber(11, 1.00057429)
+        for i = 1, 16 do simulator:setInputNumber(i, 0) end
+
+        --  CameraTransform with euler angles (0,0,0) and:
+        --  simulator:setProperty("near", 0.25)
+        --  simulator:setProperty("renderDistance", 1000)
+        --  simulator:setProperty("sizeX", 0.7)
+        --  simulator:setProperty("sizeY", 0.7)
+        --  simulator:setProperty("positionOffsetX", 0)
+        --  simulator:setProperty("positionOffsetY", 0.01)
+
+        simulator:setInputNumber(1, 1.6398879024402608)
+        simulator:setInputNumber(6, -1.6398879024402608)
+        simulator:setInputNumber(10, -0.07676870836624368)
+        simulator:setInputNumber(11, 1.0005742903860038)
         simulator:setInputNumber(12, 1.0)
-        simulator:setInputNumber(13, -0.57429038)
-        simulator:setInputNumber(14, simulator:getSlider(1))
-        simulator:setInputNumber(15, simulator:getSlider(2))
-        simulator:setInputNumber(16, simulator:getSlider(3))
-        
+        simulator:setInputNumber(13, -0.5742903860038647)
 
-        -- NEW! button/slider options from the UI
-        simulator:setInputBool(31, simulator:getIsClicked(1))       -- if button 1 is clicked, provide an ON pulse for input.getBool(31)
-        simulator:setInputNumber(31, simulator:getSlider(1))        -- set input 31 to the value of slider 1
-
-        simulator:setInputBool(32, simulator:getIsToggled(2))       -- make button 2 a toggle, for input.getBool(32)
-        simulator:setInputNumber(32, simulator:getSlider(2) * 50)   -- set input 32 to the value from slider 2 * 50
+        simulator:setInputNumber(14, simulator:getSlider(1)*50)         -- cameraTranslation.x
+        simulator:setInputNumber(15, simulator:getSlider(2)*50)         -- cameraTranslation.y
+        simulator:setInputNumber(16, (simulator:getSlider(3)) * -100)   -- cameraTranslation.z
     end;
 end
 ---@endsection
@@ -58,11 +65,13 @@ local px_cx_pos, px_cy_pos = px_cx + property.getNumber("pxOffsetX"), px_cy + pr
 --#endregion Settings
 
 --#region Initialization
-local getNumber = function(s,e)
-    local r = {}
-    for i = s, e do r[i] = input.getNumber(r[i]) end
+local getNumber = function(...)
+    local r = {...}
+    for i = 1, #r do r[i] = input.getNumber(r[i]) end
     return table.unpack(r)
 end
+
+local cameraTransform, cameraTranslation = {}, {}
 
 local WorldToScreen_points = function(points)
     local point_buffer = {}
@@ -83,7 +92,7 @@ local WorldToScreen_points = function(points)
         -- is the point within the frustum
         if 0<=Z and Z<=W  and  -W<=X and X<=W  and  -W<=Y and Y<=W then
             W = 1/W
-            -- point = {x[0;width], y[0;height], depth[0;1]}
+            --[[ point := {x[0;width], y[0;height], depth[0;1]} ]]
             point_buffer[#point_buffer+1] = {X*W*px_cx + px_cx_pos, Y*W*px_cy + px_cy_pos, Z*W}
         end
     end
@@ -97,8 +106,6 @@ local WorldToScreen_triangles = function(triangles)
 
     return triangle_buffer
 end
-
-local cameraTransform, cameraTranslation = {}, {}
 --#endregion Initialization
 
 
@@ -107,13 +114,50 @@ function onTick()
     isRendering = input.getBool(1)
 
     if isRendering then
-        cameraTransform = {getNumber(1,13)}
-        cameraTranslation = {getNumber(14,16)}
+        cameraTransform = {getNumber(1,2,3,4,5,6,7,8,9,10,11,12,13)}
+        cameraTranslation = {getNumber(14,15,16)}
     end
 end
 
+
 function onDraw()
     if isRendering then
-        
+
     end
 end
+
+
+-- [[ debug in VSCode
+local data = {}
+for i = 1, 10000 do
+    data[i] = {(math.random()-0.5)*100, (math.random()-0.5)*100, (math.random()-0.25)*100}
+end
+
+-- linearize depth[0;1]
+-- zNear * zFar / (zFar + d * (zNear - zFar))
+local n,f = 0.25, 1000
+local n_mul_f = n*f
+local n_sub_f = n-f
+local t1,t2 = 0,0
+
+function onDraw()
+    t1 = os.clock()
+
+    if isRendering then
+        local points_buffer = WorldToScreen_points(data)
+
+        for i = 1, #points_buffer do
+            local d = n_mul_f/(f + points_buffer[i][3]*n_sub_f)
+
+            screen.setColor(d, 255-d, 0, 200)
+            screen.drawCircleF(points_buffer[i][1], points_buffer[i][2], 0.6)
+        end
+
+        screen.setColor(255,0,0)
+        screen.drawText(0,10, "in view: "..#points_buffer)
+    end
+
+    t2 = os.clock()
+    screen.drawText(0,0, string.format("Elapsed time (sec): %.3f", t2-t1))
+end
+-- ]]
