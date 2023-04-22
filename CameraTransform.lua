@@ -17,12 +17,12 @@
 do
     ---@type Simulator -- Set properties and screen sizes here - will run once when the script is loaded
     simulator = simulator
-    simulator:setScreen(1, "5x5")
-    simulator:setProperty("w", 160)
+    simulator:setScreen(1, "9x5")
+    simulator:setProperty("w", 288)
     simulator:setProperty("h", 160)
     simulator:setProperty("near", 0.25)
     simulator:setProperty("renderDistance", 1000)
-    simulator:setProperty("sizeX", 0.7)
+    simulator:setProperty("sizeX", 0.7 * 1.8)
     simulator:setProperty("sizeY", 0.7)
     simulator:setProperty("positionOffsetX", 0)
     simulator:setProperty("positionOffsetY", 0.01)
@@ -137,7 +137,6 @@ local SCREEN = {
     positionOffsetY = property.getNumber("positionOffsetY")
 }
 
-SCREEN.aspectRatio = SCREEN.w / SCREEN.h
 SCREEN.r = SCREEN.sizeX/2  + SCREEN.positionOffsetX
 SCREEN.l = -SCREEN.sizeX/2 + SCREEN.positionOffsetX
 SCREEN.t = SCREEN.sizeY/2  + SCREEN.positionOffsetY
@@ -194,10 +193,10 @@ function onTick()
 
             -- Looking down the +Z axis, +X is right and +Y is up. Projects to x|y:coordinates [-1;1], z:depth [0;1], w:homogeneous coordinate
             perspectiveProjectionMatrix = {
-                {2*n/(r-l)*SCREEN.aspectRatio,  0,              0,              0},
-                {0,                             2*n/(b-t),      0,              0},
-                {-(r+l)/(r-l),                  -(b+t)/(b-t),   f/(f-n),        1},
-                {0,                             0,              -f*n/(f-n),     0}
+                {2*n/(r-l),         0,              0,              0},
+                {0,                 2*n/(b-t),      0,              0},
+                {-(r+l)/(r-l),      -(b+t)/(b-t),   f/(f-n),        1},
+                {0,                 0,              -f*n/(f-n),     0}
             }
             ------------------------------------------
 
@@ -235,7 +234,7 @@ function onTick()
 end
 
 
---[[ Debug
+-- [[ Debug
 local axisPoints = {{0,0,0,1}, {1,0,0,1}, {0,1,0,1}, {0,0,1,1}}
 local axisColor = {{255,0,0,150}, {0,255,0,150}, {0,0,255,150}}
 local drawBuffer = {}
