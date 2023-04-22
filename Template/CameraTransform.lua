@@ -234,13 +234,15 @@ function onTick()
 end
 
 
--- [[ Debug
+--[[ Debug
 local axisPoints = {{0,0,0,1}, {1,0,0,1}, {0,1,0,1}, {0,0,1,1}}
 local axisColor = {{255,0,0,150}, {0,255,0,150}, {0,0,255,150}}
 local drawBuffer = {}
 
 function draw(points)
     local temp = {}
+    local width, height = screen.getWidth(), screen.getHeight()
+    local cx, cy = width/2, height/2
 
     for i = 1, #points do
         temp[i] = {points[i][1] - cameraTranslation.x, points[i][2] - cameraTranslation.y, points[i][3] - cameraTranslation.z, points[i][4]}
@@ -251,7 +253,7 @@ function draw(points)
         local x,y,z,w = table.unpack(temp[i])
         if 0<=z and z<=w then -- Point is between near and far plane
             w = 1/w
-            drawBuffer[i] = {x*w*80 + 80, y*w*80 + 80, z*w}
+            drawBuffer[i] = {x*w*cx + cx, y*w*cy + cy, z*w}
         else
             drawBuffer[i] = false
         end

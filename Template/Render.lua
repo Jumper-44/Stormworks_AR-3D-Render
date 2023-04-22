@@ -200,7 +200,12 @@ end
 
 
 --#region VSCode onDraw() examples
--- It is only for VSCode due to the os.time() function, which is removed ingame of Stormworks LUA, which is at the start and end of onDraw() examples
+----------------------------------------------------
+-- It is only for VSCode due to the os.time() function, which is removed ingame of Stormworks LUA. It is at the start and end of onDraw() examples
+-- There are two onDraw() examples. One for drawing points and another for triangles
+-- To try example, set a spacing for '--[[code]]' to '-- [[code]]' and run in VSCode with F6
+-- Sliders 1-3 moves the cameraTranslation
+----------------------------------------------------
 
 --[[ debug in VSCode for drawing points with WorldToScreen_points()
 do
