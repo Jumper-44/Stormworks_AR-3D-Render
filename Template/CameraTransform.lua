@@ -235,6 +235,8 @@ end
 
 
 --[[ Debug
+-- Quick debug to draw the basis vectors of the world coordinate system to verify cameraTransformMatrix
+
 local axisPoints = {{0,0,0,1}, {1,0,0,1}, {0,1,0,1}, {0,0,1,1}}
 local axisColor = {{255,0,0,150}, {0,255,0,150}, {0,0,255,150}}
 local drawBuffer = {}
