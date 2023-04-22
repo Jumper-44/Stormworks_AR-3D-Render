@@ -109,7 +109,7 @@ end
 -- A triangle_buffer consist of {v1, v2, v3, color}
 -- 'v = {x,y,z,id}'
 -- 'color = {r,g,b}'
--- The 5th index will be set to {tv1, tv2, tv3, triangle_depth}' by the function. 'tv' is the triangle transformed vertex
+-- The 5th index for every triangle will be set to {tv1, tv2, tv3, triangle_depth}' by the function. 'tv' is the triangle transformed vertex
 local WorldToScreen_triangles = function(triangle_buffer, isRemovingOutOfViewTriangles)
     local vertices_buffer = {}
 
@@ -241,7 +241,7 @@ end
 --]]
 
 
--- [[ debug in VSCode for drawing traingles with WorldToScreen_triangles()
+--[[ debug in VSCode for drawing traingles with WorldToScreen_triangles()
 do
     local MatrixMultiplication = function(m1,m2) local r = {}for i=1,#m2 do r[i] = {}for j=1,#m1[1] do r[i][j] = 0 for k=1,#m1 do r[i][j] = r[i][j] + m1[k][j] * m2[i][k]end end end return r end
 
