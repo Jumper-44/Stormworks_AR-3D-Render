@@ -27,6 +27,8 @@ do
     simulator:setProperty("positionOffsetX", 0)
     simulator:setProperty("positionOffsetY", 0.01)
 
+    simulator:setProperty("tick", 0)
+
     -- Runs every tick just before onTick; allows you to simulate the inputs changing
     ---@param simulator Simulator Use simulator:<function>() to set inputs etc.
     ---@param ticks     number Number of ticks since simulator started
