@@ -171,8 +171,8 @@ local color_data = {}
 -- Cubes are first rotated, scaled then translated
 MakeCube(vertex_data, triangle_data, color_data, {0, 0, 0}, {0, 0, 0}, {0.25, 0.25, 0.25}, {0, 255, 0}, 0)
 MakeCube(vertex_data, triangle_data, color_data, {0.25, 0.75, 2.25}, {0, 0, 0}, {0.25, 0.25, 0.75}, {255, 0, 0}, 1)
-MakeCube(vertex_data, triangle_data, color_data, {1.5+0.125, 3.5, 4.25+0.125}, {0, 0, 0}, {0.25, 0.25, 0.75}, {255, 255, 0}, 2)
-MakeCube(vertex_data, triangle_data, color_data, {4.0+0.125, 0.50+0.125, 2.0+0.125}, {0, 0, 0}, {0.25, 0.25, 0.75}, {0, 0, 255}, 3)
+MakeCube(vertex_data, triangle_data, color_data, {1.5+0.125, 3.5, 4.25+0.125}, {0, 0, 0}, {0.5, 0.25, 0.5}, {255, 255, 0}, 2)
+MakeCube(vertex_data, triangle_data, color_data, {4.0+0.125, 0.50+0.125, 2.0+0.125}, {0, 0, 0}, {1.0, 1.0, 1.0}, {0, 0, 255}, 3)
 --#endregion data that will be encoded
 
 
