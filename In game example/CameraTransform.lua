@@ -229,6 +229,19 @@ function onTick()
         output.setNumber(14, cameraTranslation.x)
         output.setNumber(15, cameraTranslation.y)
         output.setNumber(16, cameraTranslation.z)
+
+
+        -- passthrough rig physics GPS and euler angles
+        -- input channel [9;14]
+        -- output channel [17;22]
+        for i = 9, 14 do
+            output.setNumber(i+8, input.getNumber(i))
+        end
+
+        --#region laser
+
+
+        --#endregion laser
     end
 
 end
