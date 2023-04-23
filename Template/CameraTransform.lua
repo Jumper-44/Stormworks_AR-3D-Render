@@ -70,7 +70,27 @@ end
 
 --#region Initialization
 local tau = math.pi*2
+
 local Clamp = function(x,s,l) return x < s and s or x > l and l or x end
+
+local getNumber = function(...)
+    local r = {...}
+    for i = 1, #r do r[i] = input.getNumber(r[i]) end
+    return table.unpack(r)
+end
+
+-- Vector3 Class
+local function Vec3(x,y,z) return
+    {x=x or 0; y=y or 0; z=z or 0;
+    add =       function(a,b)   return Vec3(a.x+b.x, a.y+b.y, a.z+b.z) end;
+    sub =       function(a,b)   return Vec3(a.x-b.x, a.y-b.y, a.z-b.z) end;
+    scale =     function(a,b)   return Vec3(a.x*b, a.y*b, a.z*b) end;
+    dot =       function(a,b)   return (a.x*b.x + a.y*b.y + a.z*b.z) end;
+    cross =     function(a,b)   return Vec3(a.y*b.z-a.z*b.y, a.z*b.x-a.x*b.z, a.x*b.y-a.y*b.x) end;
+    len =       function(a)     return a:dot(a)^0.5 end;
+    normalize = function(a)     return a:scale(1/a:len()) end;
+    unpack =    function(a,...) return a.x, a.y, a.z, ... end}
+end
 
 local MatrixMultiplication = function(m1,m2)
     local r = {}
@@ -87,11 +107,11 @@ local MatrixMultiplication = function(m1,m2)
 end
 
 local MatMul3xVec3 = function(m,v)
-    return {
-        x = m[1][1]*v.x + m[2][1]*v.y + m[3][1]*v.z,
-        y = m[1][2]*v.x + m[2][2]*v.y + m[3][2]*v.z,
-        z = m[1][3]*v.x + m[2][3]*v.y + m[3][3]*v.z
-    }
+    return Vec3(
+        m[1][1]*v.x + m[2][1]*v.y + m[3][1]*v.z,
+        m[1][2]*v.x + m[2][2]*v.y + m[3][2]*v.z,
+        m[1][3]*v.x + m[2][3]*v.y + m[3][3]*v.z
+    )
 end
 
 local MatrixTranspose = function(m)
@@ -105,23 +125,20 @@ local MatrixTranspose = function(m)
     return r
 end
 
--- Vector3 Class
-local function Vec3(x,y,z) return
-    {x=x or 0; y=y or 0; z=z or 0;
-    add =       function(a,b)   return Vec3(a.x+b.x, a.y+b.y, a.z+b.z) end;
-    sub =       function(a,b)   return Vec3(a.x-b.x, a.y-b.y, a.z-b.z) end;
-    scale =     function(a,b)   return Vec3(a.x*b, a.y*b, a.z*b) end;
-    dot =       function(a,b)   return (a.x*b.x + a.y*b.y + a.z*b.z) end;
-    cross =     function(a,b)   return Vec3(a.y*b.z-a.z*b.y, a.z*b.x-a.x*b.z, a.x*b.y-a.y*b.x) end;
-    len =       function(a)     return a:dot(a)^0.5 end;
-    normalize = function(a)     return a:scale(1/a:len()) end;
-    unpack =    function(a,...) return a.x, a.y, a.z, ... end}
+local getRotationMatrixZYX = function(ang)
+    local sx,sy,sz, cx,cy,cz = math.sin(ang.x),math.sin(ang.y),math.sin(ang.z), math.cos(ang.x),math.cos(ang.y),math.cos(ang.z)
+    return {
+        {cy*cz,                 cy*sz,               -sy,       0},
+        {-cx*sz + sx*sy*cz,     cx*cz + sx*sy*sz,    sx*cy,     0},
+        {sx*sz + cx*sy*cz,      -sx*cz + cx*sy*sz,   cx*cy,     0},
+        {0,                     0,                   0,         1}
+    }
 end
 
-local currentGPS, previousGPS = Vec3(), Vec3() -- Y-axis is up
-local currentAng, previousAng = Vec3(), Vec3() -- Euler angles
+local position, linearVelocity = Vec3(), Vec3() -- Y-axis is up
+local angle, angularVelocity = Vec3(), Vec3()
 local isRendering, isFemale = false, false
-local perspectiveProjectionMatrix, rotationMatrixYXZ, cameraTransformMatrix, cameraTranslation = {}, {}, {}, Vec3()
+local perspectiveProjectionMatrix, rotationMatrixZYX, cameraTransformMatrix, cameraTranslation = {}, {}, {}, Vec3()
 local OFFSET = {}
 --#endregion Initialization
 
@@ -148,7 +165,7 @@ OFFSET.GPS_to_camera = Vec3(
     property.getNumber("z")
 )
 
-OFFSET.tick = property.getNumber("tick")
+OFFSET.tick = property.getNumber("tick")/60
 --#endregion Settings
 
 
@@ -159,15 +176,12 @@ function onTick()
     if isRendering then
         isFemale = input.getBool(2)
 
-        currentGPS = Vec3(input.getNumber(1), input.getNumber(2), input.getNumber(3))
-        currentAng = Vec3(input.getNumber(4), input.getNumber(5), input.getNumber(6))
+        position = Vec3(getNumber(1, 2, 3))
+        angle = Vec3(getNumber(4, 5, 6))
+        linearVelocity = Vec3(getNumber(7, 8, 9))
+        angularVelocity = Vec3(getNumber(10, 11, 12))
 
-        local lookX, lookY = input.getNumber(7), input.getNumber(8)
-
-        --{ Position & Rotation Estimation }--
-        currentGPS, previousGPS = currentGPS:add( currentGPS:sub(previousGPS):scale(OFFSET.tick) ), currentGPS
-        currentAng, previousAng = currentAng:add( currentAng:sub(previousAng):scale(OFFSET.tick) ), currentAng
-        --------------------------------------
+        local lookX, lookY = input.getNumber(13), input.getNumber(14)
 
         -- CameraTransform calculation
         do ------{ Player Head Position }------
@@ -181,7 +195,6 @@ function onTick()
                 math.cos(headElevationAng) * distance +(isFemale and 0.132 or 0.161)
             )
             -----------------------------------
-
 
             --{ Perspective Projection Matrix Setup }--
             local n = SCREEN.near - head_position_offset.z
@@ -198,25 +211,16 @@ function onTick()
                 {-(r+l)/(r-l),      -(b+t)/(b-t),   f/(f-n),        1},
                 {0,                 0,              -f*n/(f-n),     0}
             }
-            ------------------------------------------
 
+            rotationMatrixZYX = MatrixMultiplication(getRotationMatrixZYX(angularVelocity:scale(OFFSET.tick*tau)), getRotationMatrixZYX(angle))
 
-            ------{ Rotation Matrix Setup }-----
-            local sx,sy,sz, cx,cy,cz = math.sin(currentAng.x),math.sin(currentAng.y),math.sin(currentAng.z), math.cos(currentAng.x),math.cos(currentAng.y),math.cos(currentAng.z)
+            -- No translationMatrix due to just subtracting cameraTranslation from vertices before matrix multiplication with the cameraTransform
+            cameraTranslation =
+                MatMul3xVec3( rotationMatrixZYX, OFFSET.GPS_to_camera:add(head_position_offset) ) -- gps offset
+                :add( MatMul3xVec3(rotationMatrixZYX, linearVelocity):scale(OFFSET.tick) ) -- Tick compensation
+                :add( position )
 
-            -- http://www.songho.ca/opengl/gl_anglestoaxes.html
-            rotationMatrixYXZ = {
-                {cy*cz + sx*sy*sz,      cx*sz,      cy*sx*sz - sy*cz,       0},
-                {sx*sy*cz - cy*sz,      cx*cz,      sy*sz + cy*sx*cz,       0},
-                {sy*cx,                 -sx,        cx*cy,                  0},
-                {0,                     0,          0,                      1}
-            }
-            -----------------------------------
-
-            -- No translationMatrix due to just subtracting cameraTranslation before matrix multiplication of the cameraTransform
-            cameraTranslation = currentGPS:add(MatMul3xVec3(rotationMatrixYXZ, OFFSET.GPS_to_camera:add(head_position_offset)))
-
-            cameraTransformMatrix = MatrixMultiplication(perspectiveProjectionMatrix, MatrixTranspose(rotationMatrixYXZ))
+            cameraTransformMatrix = MatrixMultiplication(perspectiveProjectionMatrix, MatrixTranspose(rotationMatrixZYX))
         end
 
         for i = 1, 3 do
@@ -229,6 +233,7 @@ function onTick()
         output.setNumber(14, cameraTranslation.x)
         output.setNumber(15, cameraTranslation.y)
         output.setNumber(16, cameraTranslation.z)
+
     end
 
 end
