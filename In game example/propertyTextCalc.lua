@@ -125,7 +125,7 @@ for i = 1, #cubeTriangleOrder do
 end
 --]]
 
-
+local ORIGIN_OFFSET = {10.25, 2.0, 3.25}
 local MakeCube = function(vertex_data, triangle_data, color_data, translation, angle, scale, color, id_offset)
     local sx,sy,sz, cx,cy,cz = math.sin(angle[1]),math.sin(angle[2]),math.sin(angle[3]), math.cos(angle[1]),math.cos(angle[2]),math.cos(angle[3])
     local rotXYZ = { -- http://www.songho.ca/opengl/gl_anglestoaxes.html
@@ -139,9 +139,9 @@ local MakeCube = function(vertex_data, triangle_data, color_data, translation, a
 
     for i = 1, 8 do
         vertex_data[i + id_offset*8] = {
-            vertices[i][1]*scale[1] + translation[1],
-            vertices[i][2]*scale[2] + translation[2],
-            vertices[i][3]*scale[3] + translation[3],
+            vertices[i][1]*scale[1] + translation[1] + ORIGIN_OFFSET[1],
+            vertices[i][2]*scale[2] + translation[2] + ORIGIN_OFFSET[2],
+            vertices[i][3]*scale[3] + translation[3] + ORIGIN_OFFSET[3],
             -- vertices_buffer[i + id_offset*8][4] = i + id_offset*8    -- vertex id
         }
     end
