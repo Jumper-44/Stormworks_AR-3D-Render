@@ -301,6 +301,8 @@ function onDraw()
                 local color = triangle_buffer[i][4]
                 screen.setColor(color[1], color[2], color[3], 225)
                 screen.drawTriangleF(tri[1][1], tri[1][2], tri[2][1], tri[2][2], tri[3][1], tri[3][2])
+
+                screen.setColor(255,255,255,100) -- wireframe color
                 screen.drawTriangle(tri[1][1], tri[1][2], tri[2][1], tri[2][2], tri[3][1], tri[3][2])
             end
         end
