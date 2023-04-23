@@ -26,11 +26,11 @@ do
 
     simulator:setProperty("b64", "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/")
 
-    simulator:setProperty("v1", "C+AAAAC+AAAAC+AAAAA+AAAAC+AAAAC+AAAAA+AAAAA+AAAAC+AAAAC+AAAAA+AAAAC+AAAAC+AAAAC+AAAAA+AAAAA+AAAAC+AAAAA+AAAAA+AAAAA+AAAAA+AAAA")
-    simulator:setProperty("v2", "C+AAAAA+AAAAA+AAAAA+AAAAA/IAAAA/8AAAA+wAAAA/IAAAA/8AAAA+wAAAA/YAAAA/8AAAA+AAAAA/YAAAA/8AAAA+AAAAA/IAAABAKAAAA+wAAAA/IAAABAKAAA")
-    simulator:setProperty("v3", "A+wAAAA/YAAABAKAAAA+AAAAA/YAAABAKAAAA/sAAABAWAAABAhAAAA/8AAABAWAAABAhAAAA/8AAABAaAAABAhAAAA/sAAABAaAAABAhAAAA/sAAABAWAAABAlAAA")
-    simulator:setProperty("v4", "A/8AAABAWAAABAlAAAA/8AAABAaAAABAlAAAA/sAAABAaAAABAlAAABAaAAAA+AAAAA/0AAABAlAAAA+AAAAA/0AAABAlAAAA/kAAAA/0AAABAaAAAA/kAAAA/0AAA")
-    simulator:setProperty("v5", "BAaAAAA+AAAABAKAAABAlAAAA+AAAABAKAAABAlAAAA/kAAABAKAAABAaAAAA/kAAABAKAAA")
+    simulator:setProperty("v1", "BBIgAAA/8AAABASAAABBJgAAA/8AAABASAAABBJgAABACAAABASAAABBIgAABACAAABASAAABBIgAAA/8AAABAWAAABBJgAAA/8AAABAWAAABBJgAABACAAABAWAAA")
+    simulator:setProperty("v2", "BBIgAABACAAABAWAAABBJgAABAKAAABApAAABBKgAABAKAAABApAAABBKgAABAOAAABApAAABBJgAABAOAAABApAAABBJgAABAKAAABAvAAABBKgAABAKAAABAvAAA")
+    simulator:setProperty("v3", "BBKgAABAOAAABAvAAABBJgAABAOAAABAvAAABBOgAABArAAABA7AAABBQgAABArAAABA7AAABBQgAABAtAAABA7AAABBOgAABAtAAABA7AAABBOgAABArAAABA/AAA")
+    simulator:setProperty("v4", "BBQgAABArAAABA/AAABBQgAABAtAAABA/AAABBOgAABAtAAABA/AAABBXgAABACAAABAnAAABBbgAABACAAABAnAAABBbgAABASAAABAnAAABBXgAABASAAABAnAAA")
+    simulator:setProperty("v5", "BBXgAABACAAABAvAAABBbgAABACAAABAvAAABBbgAABASAAABAvAAABBXgAABASAAABAvAAA")
 
     simulator:setProperty("t1", "BAAAAAA/gAAABAQAAABAQAAAA/gAAABAgAAABA4AAABAoAAABAwAAABBAAAABAoAAABA4AAABAoAAAA/gAAABAwAAABAwAAAA/gAAABAAAAABAQAAABAgAAABA4AAA")
     simulator:setProperty("t2", "BA4AAABAgAAABBAAAABAgAAAA/gAAABBAAAABBAAAAA/gAAABAoAAABAwAAABAAAAABA4AAABA4AAABAAAAABAQAAABBIAAABBEAAABBMAAABBMAAABBEAAABBQAAA")
@@ -257,8 +257,8 @@ local getRotationMatrixYXZ = function(ang)
 end
 --#endregion custom
 
-local vertex_data, triangle_data, color_data = decode_base64("v", 3), decode_base64("t", 3), decode_base64("c", 3)
-
+local VERTEX_DATA, TRIANGLE_DATA, COLOR_DATA = decode_base64("v", 3), decode_base64("t", 3), decode_base64("c", 3)
+local vertex_buffer, triangle_buffer = {}, {}
 
 function onTick()
     isRendering = input.getBool(1)
@@ -266,6 +266,7 @@ function onTick()
     if isRendering then
         cameraTransform = {getNumber(1,2,3,4,5,6,7,8,9,10,11,12,13)}
         cameraTranslation = {getNumber(14,15,16)}
+
 
         rigGPS = {getNumber(17,18,19)}
         rigAng = {getNumber(20,21,22)}
@@ -275,6 +276,34 @@ end
 
 function onDraw()
     if isRendering then
+        vertex_buffer = MatrixMultiplication(getRotationMatrixYXZ(rigAng), VERTEX_DATA)
+        for i = 1, #VERTEX_DATA do
+            for k = 1, 3 do
+                vertex_buffer[i][k] = vertex_buffer[i][k] + rigGPS[k]
+            end
+            vertex_buffer[i][4] = i -- set unique id
+        end
+
+        for i = 1, #TRIANGLE_DATA do
+            triangle_buffer[i] = {
+                vertex_buffer[ TRIANGLE_DATA[i][1] ],
+                vertex_buffer[ TRIANGLE_DATA[i][2] ],
+                vertex_buffer[ TRIANGLE_DATA[i][3] ],
+                COLOR_DATA[i]
+            }
+        end
+
+        WorldToScreen_triangles(triangle_buffer, true)
+        for i = 1, #triangle_buffer do
+            local tri = triangle_buffer[i][5]
+
+            if tri then
+                local color = triangle_buffer[i][4]
+                screen.setColor(color[1], color[2], color[3], 225)
+                screen.drawTriangleF(tri[1][1], tri[1][2], tri[2][1], tri[2][2], tri[3][1], tri[3][2])
+                screen.drawTriangle(tri[1][1], tri[1][2], tri[2][1], tri[2][2], tri[3][1], tri[3][2])
+            end
+        end
 
     end
 end
