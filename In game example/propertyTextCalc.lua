@@ -19,16 +19,16 @@ end
 local function encode_base64(file, matrix, str_name)
     local maxTextPropertyChars = 128
     local floatToStrCharAmount = 6
-    local dimension = #matrix[1]
-    local LinesPerPropertyText = maxTextPropertyChars // (floatToStrCharAmount * dimension)
-    local TotalPropertyTexts = math.ceil(#matrix/LinesPerPropertyText)
+    local row_len = #matrix[1]
+    local columnPerPropertyText = maxTextPropertyChars // (floatToStrCharAmount * row_len)
+    local totalPropertyTexts = math.ceil(#matrix/columnPerPropertyText)
 
-    for i = 1, TotalPropertyTexts do
+    for i = 1, totalPropertyTexts do
         file:write(str_name..i.." ")
-        for j = 1, LinesPerPropertyText do
-            if (i-1)*LinesPerPropertyText+j <= #matrix then
-                for k = 1, dimension do
-                    file:write(float_to_base64(matrix[(i-1)*LinesPerPropertyText+j][k]))
+        for j = 1, columnPerPropertyText do
+            if (i-1)*columnPerPropertyText+j <= #matrix then
+                for k = 1, row_len do
+                    file:write(float_to_base64(matrix[(i-1)*columnPerPropertyText+j][k]))
                 end
             else
                 break
@@ -49,7 +49,7 @@ local function base64_to_float(str)
     return (string.unpack("f", string.pack("I",result)))
 end
 
-local decode_base64 = function(name_str, dimension)
+local decode_base64 = function(name_str, row_len)
     local matrix, property_iter, column, row = {}, 0, 1, 1
     repeat
         property_iter = property_iter + 1
@@ -58,7 +58,7 @@ local decode_base64 = function(name_str, dimension)
             matrix[column] = matrix[column] or {}
             matrix[column][row] = base64_to_float(s)
             row = row + 1
-            if row > dimension then
+            if row > row_len then
                 column, row = column + 1, 1
             end
         end
