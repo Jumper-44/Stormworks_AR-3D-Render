@@ -24,6 +24,27 @@ do
     simulator:setProperty("pxOffsetX", 0)
     simulator:setProperty("pxOffsetY", 0)
 
+    simulator:setProperty("b64", "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/")
+    simulator:setProperty("v1", "C+AAAAC+AAAAC+AAAAA+AAAAC+AAAAC+AAAAA+AAAAA+AAAAC+AAAAC+AAAAA+AAAAC+AAAAC+AAAAC+AAAAA+AAAAA+AAAAC+AAAAA+AAAAA+AAAAA+AAAAA+AAAA")
+    simulator:setProperty("v2", "C+AAAAA+AAAAA+AAAAA+AAAAA/IAAAA/8AAAA+wAAAA/IAAAA/8AAAA+wAAAA/YAAAA/8AAAA+AAAAA/YAAAA/8AAAA+AAAAA/IAAABAKAAAA+wAAAA/IAAABAKAAA")
+    simulator:setProperty("v3", "A+wAAAA/YAAABAKAAAA+AAAAA/YAAABAKAAAA/wAAABAWAAABAgAAAA/4AAABAWAAABAgAAAA/4AAABAaAAABAgAAAA/wAAABAaAAABAgAAAA/wAAABAWAAABAmAAA")
+    simulator:setProperty("v4", "A/4AAABAWAAABAmAAAA/4AAABAaAAABAmAAAA/wAAABAaAAABAmAAABAgAAAA/AAAAA/4AAABAiAAAA/AAAAA/4AAABAiAAAA/QAAAA/4AAABAgAAAA/QAAAA/4AAA")
+    simulator:setProperty("v5", "BAgAAAA/AAAABAIAAABAiAAAA/AAAABAIAAABAiAAAA/QAAABAIAAABAgAAAA/QAAABAIAAA")
+    simulator:setProperty("t1", "BAAAAAA/gAAABAQAAABAQAAAA/gAAABAgAAABA4AAABAoAAABAwAAABBAAAABAoAAABA4AAABAoAAAA/gAAABAwAAABAwAAAA/gAAABAAAAABAQAAABAgAAABA4AAA")
+    simulator:setProperty("t2", "BA4AAABAgAAABBAAAABAgAAAA/gAAABBAAAABBAAAAA/gAAABAoAAABAwAAABAAAAABA4AAABA4AAABAAAAABAQAAABBIAAABBEAAABBMAAABBMAAABBEAAABBQAAA")
+    simulator:setProperty("t3", "BBcAAABBUAAABBYAAABBgAAABBUAAABBcAAABBUAAABBEAAABBYAAABBYAAABBEAAABBIAAABBMAAABBQAAABBcAAABBcAAABBQAAABBgAAABBQAAABBEAAABBgAAA")
+    simulator:setProperty("t4", "BBgAAABBEAAABBUAAABBYAAABBIAAABBcAAABBcAAABBIAAABBMAAABBkAAABBiAAABBmAAABBmAAABBiAAABBoAAABBuAAABBqAAABBsAAABBwAAABBqAAABBuAAA")
+    simulator:setProperty("t5", "BBqAAABBiAAABBsAAABBsAAABBiAAABBkAAABBmAAABBoAAABBuAAABBuAAABBoAAABBwAAABBoAAABBiAAABBwAAABBwAAABBiAAABBqAAABBsAAABBkAAABBuAAA")
+    simulator:setProperty("t6", "BBuAAABBkAAABBmAAABB0AAABByAAABB2AAABB2AAABByAAABB4AAABB+AAABB6AAABB8AAABCAAAABB6AAABB+AAABB6AAABByAAABB8AAABB8AAABByAAABB0AAA")
+    simulator:setProperty("t7", "BB2AAABB4AAABB+AAABB+AAABB4AAABCAAAABB4AAABByAAABCAAAABCAAAABByAAABB6AAABB8AAABB0AAABB+AAABB+AAABB0AAABB2AAA")
+    simulator:setProperty("c1", "AAAAAABDfwAAAAAAAAAAAAAABDfwAAAAAAAAAAAAAABDfwAAAAAAAAAAAAAABDfwAAAAAAAAAAAAAABDfwAAAAAAAAAAAAAABDfwAAAAAAAAAAAAAABDfwAAAAAAAA")
+    simulator:setProperty("c2", "AAAAAABDfwAAAAAAAAAAAAAABDfwAAAAAAAAAAAAAABDfwAAAAAAAAAAAAAABDfwAAAAAAAAAAAAAABDfwAAAAAAAABDfwAAAAAAAAAAAAAABDfwAAAAAAAAAAAAAA")
+    simulator:setProperty("c3", "BDfwAAAAAAAAAAAAAABDfwAAAAAAAAAAAAAABDfwAAAAAAAAAAAAAABDfwAAAAAAAAAAAAAABDfwAAAAAAAAAAAAAABDfwAAAAAAAAAAAAAABDfwAAAAAAAAAAAAAA")
+    simulator:setProperty("c4", "BDfwAAAAAAAAAAAAAABDfwAAAAAAAAAAAAAABDfwAAAAAAAAAAAAAABDfwAABDfwAAAAAAAABDfwAABDfwAAAAAAAABDfwAABDfwAAAAAAAABDfwAABDfwAAAAAAAA")
+    simulator:setProperty("c5", "BDfwAABDfwAAAAAAAABDfwAABDfwAAAAAAAABDfwAABDfwAAAAAAAABDfwAABDfwAAAAAAAABDfwAABDfwAAAAAAAABDfwAABDfwAAAAAAAABDfwAABDfwAAAAAAAA")
+    simulator:setProperty("c6", "BDfwAABDfwAAAAAAAAAAAAAAAAAAAABDfwAAAAAAAAAAAAAABDfwAAAAAAAAAAAAAABDfwAAAAAAAAAAAAAABDfwAAAAAAAAAAAAAABDfwAAAAAAAAAAAAAABDfwAA")
+    simulator:setProperty("c7", "AAAAAAAAAAAABDfwAAAAAAAAAAAAAABDfwAAAAAAAAAAAAAABDfwAAAAAAAAAAAAAABDfwAAAAAAAAAAAAAABDfwAAAAAAAAAAAAAABDfwAA")
+
     -- Runs every tick just before onTick; allows you to simulate the inputs changing
     ---@param simulator Simulator Use simulator:<function>() to set inputs etc.
     ---@param ticks     number Number of ticks since simulator started
@@ -180,6 +201,60 @@ local WorldToScreen_triangles = function(triangle_buffer, isRemovingOutOfViewTri
 end
 --#endregion Render Function(s)
 
+--#region custom
+local b64 = property.getText("b64")
+
+local function base64_to_float(str)
+    local result = 0
+    for i = 1, 6 do
+        result = result | (b64:find(str:sub(i, i)) - 1 << ((6 - i) * 6))
+    end
+    return (string.unpack("f", string.pack("I",result)))
+end
+
+local decode_base64 = function(name_str, row_len)
+    local matrix, property_iter, column, row = {}, 0, 1, 1
+    repeat
+        property_iter = property_iter + 1
+        local str = property.getText(name_str..property_iter)
+        for s in str:gmatch("......") do
+            matrix[column] = matrix[column] or {}
+            matrix[column][row] = base64_to_float(s)
+            row = row + 1
+            if row > row_len then
+                column, row = column + 1, 1
+            end
+        end
+    until str == ""
+
+    return matrix
+end
+
+local MatrixMultiplication = function(m1,m2)
+    local r = {}
+    for i=1,#m2 do
+        r[i] = {}
+        for j=1,#m1[1] do
+            r[i][j] = 0
+            for k=1,#m1 do
+                r[i][j] = r[i][j] + m1[k][j] * m2[i][k]
+            end
+        end
+    end
+    return r
+end
+
+local getRotationMatrixYXZ = function(ang)
+    local sx,sy,sz, cx,cy,cz = math.sin(ang[1]),math.sin(ang[2]),math.sin(ang[3]), math.cos(ang[1]),math.cos(ang[2]),math.cos(ang[3])
+    return {
+        {cy*cz + sx*sy*sz,      cx*sz,      cy*sx*sz - sy*cz},
+        {sx*sy*cz - cy*sz,      cx*cz,      sy*sz + cy*sx*cz},
+        {sy*cx,                 -sx,        cx*cy,          }
+    }
+end
+--#endregion custom
+
+local vertex_data, triangle_data, color_data = decode_base64("v", 3), decode_base64("t", 3), decode_base64("c", 3)
 
 
 function onTick()
@@ -188,6 +263,9 @@ function onTick()
     if isRendering then
         cameraTransform = {getNumber(1,2,3,4,5,6,7,8,9,10,11,12,13)}
         cameraTranslation = {getNumber(14,15,16)}
+
+        rigGPS = {getNumber(17,18,19)}
+        rigAng = {getNumber(20,21,22)}
     end
 end
 
