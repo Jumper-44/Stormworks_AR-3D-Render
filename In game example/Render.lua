@@ -27,8 +27,8 @@ do
     simulator:setProperty("b64", "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/")
 
     simulator:setProperty("v1", "BBIgAAA/8AAABASAAABBJgAAA/8AAABASAAABBJgAABACAAABASAAABBIgAABACAAABASAAABBIgAAA/8AAABAWAAABBJgAAA/8AAABAWAAABBJgAABACAAABAWAAA")
-    simulator:setProperty("v2", "BBIgAABACAAABAWAAABBJgAABAKAAABApAAABBKgAABAKAAABApAAABBKgAABAOAAABApAAABBJgAABAOAAABApAAABBJgAABAKAAABAvAAABBKgAABAKAAABAvAAA")
-    simulator:setProperty("v3", "BBKgAABAOAAABAvAAABBJgAABAOAAABAvAAABBOgAABArAAABA7AAABBQgAABArAAABA7AAABBQgAABAtAAABA7AAABBOgAABAtAAABA7AAABBOgAABArAAABA/AAA")
+    simulator:setProperty("v2", "BBIgAABACAAABAWAAABBKgAABAKAAABApAAABBLgAABAKAAABApAAABBLgAABAOAAABApAAABBKgAABAOAAABApAAABBKgAABAKAAABAvAAABBLgAABAKAAABAvAAA")
+    simulator:setProperty("v3", "BBLgAABAOAAABAvAAABBKgAABAOAAABAvAAABBOgAABArAAABA7AAABBQgAABArAAABA7AAABBQgAABAtAAABA7AAABBOgAABAtAAABA7AAABBOgAABArAAABA/AAA")
     simulator:setProperty("v4", "BBQgAABArAAABA/AAABBQgAABAtAAABA/AAABBOgAABAtAAABA/AAABBXgAABACAAABAnAAABBbgAABACAAABAnAAABBbgAABASAAABAnAAABBXgAABASAAABAnAAA")
     simulator:setProperty("v5", "BBXgAABACAAABAvAAABBbgAABACAAABAvAAABBbgAABASAAABAvAAABBXgAABASAAABAvAAA")
 
@@ -247,12 +247,12 @@ local MatrixMultiplication = function(m1,m2)
     return r
 end
 
-local getRotationMatrixYXZ = function(ang)
+local getRotationMatrixZYX = function(ang)
     local sx,sy,sz, cx,cy,cz = math.sin(ang[1]),math.sin(ang[2]),math.sin(ang[3]), math.cos(ang[1]),math.cos(ang[2]),math.cos(ang[3])
     return {
-        {cy*cz + sx*sy*sz,      cx*sz,      cy*sx*sz - sy*cz},
-        {sx*sy*cz - cy*sz,      cx*cz,      sy*sz + cy*sx*cz},
-        {sy*cx,                 -sx,        cx*cy,          }
+        {cy*cz,                 cy*sz,              -sy  },
+        {-cx*sz + sx*sy*cz,     cx*cz + sx*sy*sz,   sx*cy},
+        {sx*sz + cx*sy*cz,      -sx*cz + cx*sy*sz,  cx*cy}
     }
 end
 --#endregion custom
@@ -276,7 +276,7 @@ end
 
 function onDraw()
     if isRendering then
-        vertex_buffer = MatrixMultiplication(getRotationMatrixYXZ(rigAng), VERTEX_DATA)
+        vertex_buffer = MatrixMultiplication(getRotationMatrixZYX(rigAng), VERTEX_DATA)
         for i = 1, #VERTEX_DATA do
             for k = 1, 3 do
                 vertex_buffer[i][k] = vertex_buffer[i][k] + rigGPS[k]

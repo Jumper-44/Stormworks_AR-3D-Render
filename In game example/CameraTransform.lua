@@ -121,7 +121,7 @@ end
 local currentGPS, previousGPS = Vec3(), Vec3() -- Y-axis is up
 local currentAng, previousAng = Vec3(), Vec3() -- Euler angles
 local isRendering, isFemale = false, false
-local perspectiveProjectionMatrix, rotationMatrixYXZ, cameraTransformMatrix, cameraTranslation = {}, {}, {}, Vec3()
+local perspectiveProjectionMatrix, rotationMatrixZYX, cameraTransformMatrix, cameraTranslation = {}, {}, {}, Vec3()
 local OFFSET = {}
 --#endregion Initialization
 
@@ -203,20 +203,18 @@ function onTick()
 
             ------{ Rotation Matrix Setup }-----
             local sx,sy,sz, cx,cy,cz = math.sin(currentAng.x),math.sin(currentAng.y),math.sin(currentAng.z), math.cos(currentAng.x),math.cos(currentAng.y),math.cos(currentAng.z)
-
-            -- http://www.songho.ca/opengl/gl_anglestoaxes.html
-            rotationMatrixYXZ = {
-                {cy*cz + sx*sy*sz,      cx*sz,      cy*sx*sz - sy*cz,       0},
-                {sx*sy*cz - cy*sz,      cx*cz,      sy*sz + cy*sx*cz,       0},
-                {sy*cx,                 -sx,        cx*cy,                  0},
-                {0,                     0,          0,                      1}
+            rotationMatrixZYX = {
+                {cy*cz,                 cy*sz,               -sy,       0},
+                {-cx*sz + sx*sy*cz,     cx*cz + sx*sy*sz,    sx*cy,     0},
+                {sx*sz + cx*sy*cz,      -sx*cz + cx*sy*sz,   cx*cy,     0},
+                {0,                     0,          0,                  1}
             }
             -----------------------------------
 
             -- No translationMatrix due to just subtracting cameraTranslation before matrix multiplication of the cameraTransform
-            cameraTranslation = currentGPS:add(MatMul3xVec3(rotationMatrixYXZ, OFFSET.GPS_to_camera:add(head_position_offset)))
+            cameraTranslation = currentGPS:add(MatMul3xVec3(rotationMatrixZYX, OFFSET.GPS_to_camera:add(head_position_offset)))
 
-            cameraTransformMatrix = MatrixMultiplication(perspectiveProjectionMatrix, MatrixTranspose(rotationMatrixYXZ))
+            cameraTransformMatrix = MatrixMultiplication(perspectiveProjectionMatrix, MatrixTranspose(rotationMatrixZYX))
         end
 
         for i = 1, 3 do
