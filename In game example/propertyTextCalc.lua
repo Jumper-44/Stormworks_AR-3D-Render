@@ -38,7 +38,7 @@ local function encode_base64(file, matrix, str_name)
     end
 end
 
---[[ Functions to use ingame of SW to read property data end decode
+--[[ Functions to use ingame of SW to read property data and decode
 local b64 = property.getText("b64")
 
 local function base64_to_float(str)
