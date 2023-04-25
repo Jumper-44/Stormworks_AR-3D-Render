@@ -162,7 +162,7 @@ local WorldToScreen_triangles = function(triangle_buffer, isRemovingOutOfViewTri
                 v1,
                 v2,
                 v3,
-                (1/3)*(v1[3] + v2[3] + v3[3]) -- triangle depth for doing painter's algorithm
+                v1[3] + v2[3] + v3[3] -- triangle depth for doing painter's algorithm
             }
         elseif isRemovingOutOfViewTriangles then
             table.remove(triangle_buffer, i)
