@@ -211,7 +211,7 @@ end
 do
     local data = {}
     local rand = math.random
-    for i = 1, 1E3 do
+    for i = 1, 1E5 do
         data[i] = {(rand()-0.5)*50, (rand()-0.5)*50, (rand())*100}
     end
 
@@ -220,13 +220,13 @@ do
     local n,f = 0.25, 1000
     local n_mul_f = n*f
     local n_sub_f = n-f
-    local t1,t2 = 0,0
+    local t1,t2,t3 = 0,0,0
 
     function onDraw()
-        t1 = os.clock()
-
         if isRendering then
+            t1 = os.clock()
             local points_buffer = WorldToScreen_points(data)
+            t2 = os.clock()
 
             for i = 1, #points_buffer do
                 local d = n_mul_f/(f + points_buffer[i][3]*n_sub_f)
@@ -234,13 +234,14 @@ do
                 screen.setColor(d, 255-d, 0, 200)
                 screen.drawCircleF(points_buffer[i][1], points_buffer[i][2], 0.6)
             end
+            t3 = os.clock()
 
             screen.setColor(255,0,0)
             screen.drawText(0,00, "in view: "..#points_buffer)
-        end
 
-        t2 = os.clock()
-        screen.drawText(0,10, string.format("Elapsed time (sec): %.3f", t2-t1))
+            screen.drawText(0,10, string.format("Time Calc (sec): %.3f", t2-t1))
+            screen.drawText(0,20, string.format("Time Draw (sec): %.3f", t3-t2))
+        end
     end
 end
 --]]
