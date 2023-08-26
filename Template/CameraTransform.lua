@@ -138,7 +138,7 @@ end
 local position, linearVelocity = Vec3(), Vec3() -- Y-axis is up
 local angle, angularVelocity = Vec3(), Vec3()
 local isRendering, isFemale = false, false
-local perspectiveProjectionMatrix, rotationMatrixZYX, cameraTransformMatrix, cameraTranslation = {}, {}, {}, Vec3()
+local perspectiveProjectionMatrix, rotationMatrixZYX, translationMatrix, cameraTransformMatrix, cameraTranslation = {}, {}, {{1, 0, 0, 0},{0, 1, 0, 0},{0, 0, 1, 0},{0, 0, 0, 1}}, {}, Vec3()
 local OFFSET = {}
 --#endregion Initialization
 
@@ -204,7 +204,7 @@ function onTick()
             local t = SCREEN.t    - head_position_offset.y
             local b = SCREEN.b    - head_position_offset.y
 
-            -- Looking down the +Z axis, +X is right and +Y is up. Projects to x|y:coordinates [-1;1], z:depth [0;1], w:homogeneous coordinate
+            -- Looking down the +Z axis, +X is right and +Y is up. Projects to clip space: x|y:coordinates [-w,w], z:depth [0,w], w:homogeneous coordinate
             perspectiveProjectionMatrix = {
                 {2*n/(r-l),         0,              0,              0},
                 {0,                 2*n/(b-t),      0,              0},
@@ -214,26 +214,21 @@ function onTick()
 
             rotationMatrixZYX = MatrixMultiplication(getRotationMatrixZYX(angularVelocity:scale(OFFSET.tick*tau)), getRotationMatrixZYX(angle))
 
-            -- No translationMatrix due to just subtracting cameraTranslation from vertices before matrix multiplication with the cameraTransform
             cameraTranslation =
                 MatMul3xVec3( rotationMatrixZYX, OFFSET.GPS_to_camera:add(head_position_offset) ) -- gps offset
                 :add( MatMul3xVec3(rotationMatrixZYX, linearVelocity):scale(OFFSET.tick) ) -- Tick compensation
                 :add( position )
 
-            cameraTransformMatrix = MatrixMultiplication(perspectiveProjectionMatrix, MatrixTranspose(rotationMatrixZYX))
+            translationMatrix[4][1], translationMatrix[4][2], translationMatrix[4][3] = Vec3():sub(cameraTranslation):unpack()
+
+            cameraTransformMatrix = MatrixMultiplication(perspectiveProjectionMatrix, MatrixMultiplication(MatrixTranspose(rotationMatrixZYX), translationMatrix))
         end
 
-        for i = 1, 3 do
+        for i = 1, 4 do
             for j = 1, 4 do
                 output.setNumber((i-1)*4 + j, cameraTransformMatrix[i][j])
             end
         end
-
-        output.setNumber(13, cameraTransformMatrix[4][3])
-        output.setNumber(14, cameraTranslation.x)
-        output.setNumber(15, cameraTranslation.y)
-        output.setNumber(16, cameraTranslation.z)
-
     end
 
 end
@@ -247,17 +242,13 @@ local axisColor = {{255,0,0,150}, {0,255,0,150}, {0,0,255,150}}
 local drawBuffer = {}
 
 function draw(points)
-    local temp = {}
     local width, height = screen.getWidth(), screen.getHeight()
     local cx, cy = width/2, height/2
 
-    for i = 1, #points do
-        temp[i] = {points[i][1] - cameraTranslation.x, points[i][2] - cameraTranslation.y, points[i][3] - cameraTranslation.z, points[i][4]}
-    end
-    temp = MatrixMultiplication(cameraTransformMatrix, temp)
+    local buffer = MatrixMultiplication(cameraTransformMatrix, axisPoints)
 
     for i = 1, #points do
-        local x,y,z,w = table.unpack(temp[i])
+        local x,y,z,w = table.unpack(buffer[i])
         if 0<=z and z<=w then -- Point is between near and far plane
             w = 1/w
             drawBuffer[i] = {x*w*cx + cx, y*w*cy + cy, z*w}
