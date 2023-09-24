@@ -168,10 +168,17 @@ OFFSET.GPS_to_camera = Vec3(
 OFFSET.tick = property.getNumber("tick")/60
 --#endregion Settings
 
+--#region laser
+OFFSET.GPS_to_laser = {Vec3(-0.25, 0, 0.125), Vec3(0.25, 0, 0.125)} -- {l1, l2}
+local laserInput = {}
+local laserOutput = {}
+--#endregion laser
+
 
 function onTick()
     isRendering = input.getBool(1)
     output.setBool(1, isRendering)
+    output.setBool(2, input.getBool(3)) -- Clear laserPoints table
 
     if isRendering then
         isFemale = input.getBool(2)
@@ -183,45 +190,46 @@ function onTick()
 
         local lookX, lookY = input.getNumber(13), input.getNumber(14)
 
-        -- CameraTransform calculation
-        do ------{ Player Head Position }------
-            local headAzimuthAng =    Clamp(lookX, -0.277, 0.277) * 0.408 * tau -- 0.408 is to make 100° to 40.8°
-            local headElevationAng =  Clamp(lookY, -0.125, 0.125) * 0.9 * tau + 0.404 + math.abs(headAzimuthAng/0.7101) * 0.122 -- 0.9 is to make 45° to 40.5°, 0.404 rad is 23.2°. 0.122 rad is 7° at max yaw.
 
-            local distance = math.cos(headAzimuthAng) * 0.1523
-            head_position_offset = Vec3(
-                math.sin(headAzimuthAng) * 0.1523,
-                math.sin(headElevationAng) * distance -(isFemale and 0.141 or 0.023),
-                math.cos(headElevationAng) * distance +(isFemale and 0.132 or 0.161)
-            )
-            -----------------------------------
+        ------{ Player Head Position }------
+        local headAzimuthAng =    Clamp(lookX, -0.277, 0.277) * 0.408 * tau -- 0.408 is to make 100° to 40.8°
+        local headElevationAng =  Clamp(lookY, -0.125, 0.125) * 0.9 * tau + 0.404 + math.abs(headAzimuthAng/0.7101) * 0.122 -- 0.9 is to make 45° to 40.5°, 0.404 rad is 23.2°. 0.122 rad is 7° at max yaw.
 
-            --{ Perspective Projection Matrix Setup }--
-            local n = SCREEN.near - head_position_offset.z
-            local f = SCREEN.far
-            local r = SCREEN.r    - head_position_offset.x
-            local l = SCREEN.l    - head_position_offset.x
-            local t = SCREEN.t    - head_position_offset.y
-            local b = SCREEN.b    - head_position_offset.y
+        local distance = math.cos(headAzimuthAng) * 0.1523
+        head_position_offset = Vec3(
+            math.sin(headAzimuthAng) * 0.1523,
+            math.sin(headElevationAng) * distance -(isFemale and 0.141 or 0.023),
+            math.cos(headElevationAng) * distance +(isFemale and 0.132 or 0.161)
+        )
+        -----------------------------------
 
-            -- Looking down the +Z axis, +X is right and +Y is up. Projects to x|y:coordinates [-1;1], z:depth [0;1], w:homogeneous coordinate
-            perspectiveProjectionMatrix = {
-                {2*n/(r-l),         0,              0,              0},
-                {0,                 2*n/(b-t),      0,              0},
-                {-(r+l)/(r-l),      -(b+t)/(b-t),   f/(f-n),        1},
-                {0,                 0,              -f*n/(f-n),     0}
-            }
+        --{ Perspective Projection Matrix Setup }--
+        local n = SCREEN.near - head_position_offset.z
+        local f = SCREEN.far
+        local r = SCREEN.r    - head_position_offset.x
+        local l = SCREEN.l    - head_position_offset.x
+        local t = SCREEN.t    - head_position_offset.y
+        local b = SCREEN.b    - head_position_offset.y
 
-            rotationMatrixZYX = MatrixMultiplication(getRotationMatrixZYX(angularVelocity:scale(OFFSET.tick*tau)), getRotationMatrixZYX(angle))
+        -- Looking down the +Z axis, +X is right and +Y is up. Projects to x|y:coordinates [-1;1], z:depth [0;1], w:homogeneous coordinate
+        perspectiveProjectionMatrix = {
+            {2*n/(r-l),         0,              0,              0},
+            {0,                 2*n/(b-t),      0,              0},
+            {-(r+l)/(r-l),      -(b+t)/(b-t),   f/(f-n),        1},
+            {0,                 0,              -f*n/(f-n),     0}
+        }
 
-            -- No translationMatrix due to just subtracting cameraTranslation from vertices before matrix multiplication with the cameraTransform
-            cameraTranslation =
-                MatMul3xVec3( rotationMatrixZYX, OFFSET.GPS_to_camera:add(head_position_offset) ) -- gps offset
-                :add( MatMul3xVec3(rotationMatrixZYX, linearVelocity):scale(OFFSET.tick) ) -- Tick compensation
-                :add( position )
+        local rotZYX = getRotationMatrixZYX(angle)
+        rotationMatrixZYX = MatrixMultiplication(getRotationMatrixZYX(angularVelocity:scale(OFFSET.tick*tau)), rotZYX)
 
-            cameraTransformMatrix = MatrixMultiplication(perspectiveProjectionMatrix, MatrixTranspose(rotationMatrixZYX))
-        end
+        -- No translationMatrix due to just subtracting cameraTranslation from vertices before matrix multiplication with the cameraTransform
+        cameraTranslation =
+            MatMul3xVec3( rotationMatrixZYX, OFFSET.GPS_to_camera:add(head_position_offset) ) -- gps offset
+            :add( MatMul3xVec3(rotationMatrixZYX, linearVelocity):scale(OFFSET.tick) ) -- Tick compensation
+            :add( position )
+
+        cameraTransformMatrix = MatrixMultiplication(perspectiveProjectionMatrix, MatrixTranspose(rotationMatrixZYX))
+
 
         for i = 1, 3 do
             for j = 1, 4 do
@@ -235,6 +243,7 @@ function onTick()
         output.setNumber(16, cameraTranslation.z)
 
 
+
         -- passthrough rig physics GPS and euler angles
         -- input channel [15;20]
         -- output channel [17;22]
@@ -242,12 +251,13 @@ function onTick()
             output.setNumber(i+2, input.getNumber(i))
         end
 
-        --#region laser
-
-
-        --#endregion laser
+        -- passthrough laser coordinates
+        -- input channel [21;26]
+        -- output channel [23;28]
+        for i = 21, 26 do
+            output.setNumber(i + 2, input.getNumber(i))
+        end
     end
-
 end
 
 

@@ -90,6 +90,12 @@ end
 --#region Settings
 local px_cx, px_cy = property.getNumber("w")/2, property.getNumber("h")/2
 local px_cx_pos, px_cy_pos = px_cx + property.getNumber("pxOffsetX"), px_cy + property.getNumber("pxOffsetY")
+
+-- Getting near and far to linearize depth
+-- zNear * zFar / (zFar + d * (zNear - zFar))
+local near, far = property.getNumber("near"), property.getNumber("renderDistance")
+local n_mul_f = near*far
+local n_sub_f = near-far
 --#endregion Settings
 
 --#region Initialization
@@ -186,7 +192,7 @@ local WorldToScreen_triangles = function(triangle_buffer, isRemovingOutOfViewTri
                 v1,
                 v2,
                 v3,
-                (1/3)*(v1[3] + v2[3] + v3[3]) -- triangle depth for doing painter's algorithm
+                v1[3] + v2[3] + v3[3] -- triangle depth for doing painter's algorithm
             }
         elseif isRemovingOutOfViewTriangles then
             table.remove(triangle_buffer, i)
@@ -259,9 +265,11 @@ end
 
 local VERTEX_DATA, TRIANGLE_DATA, COLOR_DATA = decode_base64("v", 3), decode_base64("t", 3), decode_base64("c", 3)
 local vertex_buffer, triangle_buffer = {}, {}
+local laserPoints = {}
 
 function onTick()
     isRendering = input.getBool(1)
+    if input.getBool(2) then laserPoints = {} end
 
     if isRendering then
         cameraTransform = {getNumber(1,2,3,4,5,6,7,8,9,10,11,12,13)}
@@ -270,12 +278,32 @@ function onTick()
 
         rigGPS = {getNumber(17,18,19)}
         rigAng = {getNumber(20,21,22)}
+
+        laserCoords = {{getNumber(23,24,25)}, {getNumber(26,27,28)}}
+        for i = 1, #laserCoords do
+            if laserCoords[i][1] ~= 0 and laserCoords[i][1] ~= 0 then
+                local id = #laserPoints+1
+                laserCoords[i][4] = id
+                laserPoints[id] = laserCoords[i]
+            end
+        end
     end
 end
 
 
 function onDraw()
     if isRendering then
+        points = WorldToScreen_points(laserPoints)
+        for i = 1, #points do
+            local point = points[i]
+
+            -- zNear * zFar / (zFar + d * (zNear - zFar))
+            local dis = n_mul_f / (far + point[3]*n_sub_f)
+            screen.setColor(dis, 255/dis, dis*10%255, 150)
+            screen.drawCircleF(point[1], point[2], math.max(2.5 - dis, 0.6))
+        end
+
+
         vertex_buffer = MatrixMultiplication(getRotationMatrixZYX(rigAng), VERTEX_DATA)
         for i = 1, #VERTEX_DATA do
             for k = 1, 3 do
@@ -307,5 +335,8 @@ function onDraw()
             end
         end
 
+        screen.setColor(255,255,0, 100)
+        screen.drawText(0,7, "L:"..#points)
+        screen.drawText(0,14, "T:"..#triangle_buffer)
     end
 end
