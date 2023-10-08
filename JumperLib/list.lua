@@ -6,8 +6,13 @@
 ---@param elements table -- expects: {{}, {}, ..., {}}
 ---@param removed_id nil -- dirty local to reduce char
 ---@param id nil -- dirty local to reduce char
----@return table
+---@overload fun(elements: table):table
+---@return list
 function list(elements, removed_id, id)
+    ---@class list
+    ---@field insert fun(new_elements: table):integer
+    ---@field remove fun(index: integer)
+
     removed_id = {}
 
     ---@param new_elements table
