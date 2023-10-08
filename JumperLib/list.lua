@@ -2,7 +2,8 @@
 -- GitHub: https://github.com/Jumper-44
 
 ---@section list
----Table/list in which removed entries are marked for removal and overwritten by new inserted values.
+---Table/list in which removed entries are marked for removal and overwritten by new inserted values.  
+---Purpose for changing the format from {{a,b,c}, {a,b,c}, ...} to {{a ,a, ...}, {b, b, ...}, {c, c, ...}}, which reduces tables
 ---@param elements table -- expects: {{}, {}, ..., {}}
 ---@param removed_id nil -- dirty local to reduce char
 ---@param id nil -- dirty local to reduce char
