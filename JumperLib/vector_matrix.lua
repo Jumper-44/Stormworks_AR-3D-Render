@@ -6,11 +6,29 @@
 --#region vector class with ':' sugar syntax
 
 ---@section vec3
----Convenient vector class with x|y|z hash entries and capable of using ':' sugar syntax for vector operations
+---@class vec3
+---@field x number
+---@field y number
+---@field z number
+---@field add fun(a:vec3, b:vec3):vec3
+---@field sub fun(a:vec3, b:vec3):vec3
+---@field scale fun(a:vec3, b:number):vec3
+---@field dot fun(a:vec3, b:vec3):number
+---@field cross fun(a:vec3, b:vec3):vec3
+---@field len fun(a:vec3):number
+---@field normalize fun(a:vec3):vec3
+---@field unpack fun(a:vec3, ...:any):number, number, number, ...:any
+---@field mult fun(a:vec3, b:vec3):vec3
+---@field project fun(a:vec3, b:vec3):vec3
+---@field reject fun(a:vec3, b:vec3):vec3
+---@field tolocal fun(a:vec3, r:vec3, f:vec3, u:vec3):vec3
+---@field toglobal fun(a:vec3, r:vec3, f:vec3, u:vec3):vec3
+---@field tospherical fun(a:vec3, r:vec3, f:vec3, u:vec3, c?:vec3):vec3
+---Convenient, but slow vector class with x|y|z hash entries and capable of using ':' sugar syntax for vector operations
 ---@param x? number
 ---@param y? number
 ---@param z? number
----@return table | vec3
+---@return vec3
 function vec3(x,y,z) return {
     x=x or 0,
     y=y or 0,
@@ -38,7 +56,7 @@ function vec3(x,y,z) return {
 ---@param hor number
 ---@param ver number
 ---@param d? number
----@return table | vec3
+---@return vec3
 function stoc_vec3(hor, ver, d)
     d = d or 1
     return vec3(math.sin(hor) * math.cos(ver) * d, math.cos(hor) * math.cos(ver) * d, math.sin(ver) * d)
@@ -48,7 +66,7 @@ end
 ---@section str2vec3
 ---comment
 ---@param str string
----@return table | vec3
+---@return vec3
 function str2vec3(str) --separator , x,y,z
     local x, y, z = str:match("([^,]+),([^,]+),([^,]+)")
     return vec3(tonumber(x), tonumber(y), tonumber(z))
@@ -67,6 +85,7 @@ end
 ---@alias vec table
 ---@alias vec2d table
 ---@alias vec3d table
+---@alias vec4d table
 
 ---@section str_to_vec
 ---Given a string with arbitrary length of the pattern "x,y,...,n" then return the table/vector {x, y, ..., n}
@@ -407,6 +426,7 @@ end
 --#region matrix
 
 ---@alias matrix table
+---@alias matrix2x2 table
 ---@alias matrix3x3 table
 
 ---@section matrix_init
@@ -497,6 +517,20 @@ function matrix_mult(a, b, _return)
 end
 ---@endsection
 
+---@section matrix_multVec2d
+---comment
+---@param m matrix2x2
+---@param v vec2d
+---@param _return vec2d
+---@return any
+function matrix_multVec2d(m, v, _return)
+    for i = 1, 2 do
+        _return[i] = m[1][i]*v[1] + m[2][i]*v[2]
+    end
+    return _return
+end
+---@endsection
+
 ---@section matrix_multVec3d
 ---comment
 ---@param m matrix3x3
@@ -506,6 +540,20 @@ end
 function matrix_multVec3d(m, v, _return)
     for i = 1, 3 do
         _return[i] = m[1][i]*v[1] + m[2][i]*v[2] + m[3][i]*v[3]
+    end
+    return _return
+end
+---@endsection
+
+---@section matrix_multVec4d
+---comment
+---@param m matrix4x4
+---@param v vec4d
+---@param _return vec4d
+---@return any
+function matrix_multVec4d(m, v, _return)
+    for i = 1, 4 do
+        _return[i] = m[1][i]*v[1] + m[2][i]*v[2] + m[3][i]*v[3] + m[4][i]*v[4]
     end
     return _return
 end
@@ -562,8 +610,24 @@ function matrix_getRotZ(angle, _return)
 end
 ---@endsection
 
+---@section matrix_getRot2d
+---Get 2d rotation matrix (around z-axis)
+---@param angle number
+---@param _return? matrix2x2
+---@return any
+function matrix_getRot2d(angle, _return)
+    _return = _return or matrix_init(2, 2, _return)
+    local s, c = math.sin(angle), math.cos(angle)
+    _return[1][1] = c
+    _return[1][2] = s
+    _return[2][1] = -s
+    _return[2][2] = c
+    return _return
+end
+---@endsection
+
 ---@section matrix_getRotZYX
----Get 3d rotation matrix of the order ZYX  
+---Get 3d rotation matrix of the order ZYX, intended when y-axis is up  
 ---https://www.songho.ca/opengl/gl_anglestoaxes.html
 ---@param angleX number
 ---@param angleY number
@@ -581,6 +645,30 @@ function matrix_getRotZYX(angleX, angleY, angleZ, _return)
     _return[2][3] = sx*cy
     _return[3][1] = sx*sz + cx*sy*cz
     _return[3][2] = -sx*cz + cx*sy*sz
+    _return[3][3] = cx*cy
+    return _return
+end
+---@endsection
+
+---@section matrix_getRotZXY
+---Get 3d rotation matrix of the order ZYX, intended when z-axis is up  
+---https://www.songho.ca/opengl/gl_anglestoaxes.html
+---@param angleX number
+---@param angleY number
+---@param angleZ number
+---@param _return? matrix3x3
+---@return any
+function matrix_getRotZXY(angleX, angleY, angleZ, _return)
+    _return = _return or matrix_init(3, 3, _return)
+    local sx,sy,sz, cx,cy,cz = math.sin(angleX),math.sin(angleY),math.sin(angleZ), math.cos(angleX),math.cos(angleY),math.cos(angleZ)
+    _return[1][1] = cz*cy-sz*sx*sy
+    _return[1][2] = sz*cy+cz*sx*sy
+    _return[1][3] = -cx*sy
+    _return[2][1] = -sz*cx
+    _return[2][2] = cz*cx
+    _return[2][3] = sx
+    _return[3][1] = cz*sy+sz*sx*cy
+    _return[3][2] = sz*sy-cz*sx*cy
     _return[3][3] = cx*cy
     return _return
 end
@@ -616,8 +704,8 @@ end
 
 
 
-
---[[ debug1
+---@section __vector_matrix_DEBUG__
+-- [[ debug1
 for t = 1, 5 do
     local t1, t2, t3
 
@@ -647,7 +735,7 @@ for t = 1, 5 do
 end
 --]]
 
---[[ debug2
+-- [[ debug2
 for t = 1, 5 do
     local t1, t2
 
@@ -668,3 +756,4 @@ for t = 1, 5 do
     print("time: "..(t2 - t1))
 end
 --]]
+---@endsection
