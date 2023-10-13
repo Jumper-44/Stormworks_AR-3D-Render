@@ -7,7 +7,7 @@
 ---@param elements table -- expects: {{}, {}, ..., {}}
 ---@param removed_id nil -- dirty local to reduce char
 ---@param id nil -- dirty local to reduce char
----@overload fun(elements: table):table
+---@overload fun(elements: table):list
 ---@return list
 function list(elements, removed_id, id)
     ---@class list
@@ -36,7 +36,9 @@ end
 ---@endsection
 
 
---[[ debug
+
+---@section __list_DEBUG___
+-- [[ debug
 do
     local arr = list({{},{},{}})
     local buffer = {}
@@ -44,7 +46,7 @@ do
     local t1, t2, t3, t4
 
     t1 = os.clock()
-    for i = 1, 1e6 do
+    for i = 1, 1e7 do
         buffer[1] = i
         buffer[2] = i % 3
         buffer[3] = i % 2 == 0
@@ -56,7 +58,7 @@ do
         arr.remove(i)
     end
     t3 = os.clock()
-    for i = 1, 1e6 do
+    for i = 1, 1e7 do
         buffer[1] = i
         buffer[2] = i % 5
         buffer[3] = i % 3 == 0
@@ -70,3 +72,4 @@ do
     print(t4-t3)
 end
 --]]
+---@endsection
