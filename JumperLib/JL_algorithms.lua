@@ -1,7 +1,6 @@
 -- Author: Jumper
 -- GitHub: https://github.com/Jumper-44
 
-require('JumperLib.vector_matrix')
 
 ---@section clamp
 ---Clamp the value x in the range [s;l]

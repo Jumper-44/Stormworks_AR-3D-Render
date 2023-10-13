@@ -3,7 +3,7 @@
 
 
 
-require('JumperLib.list')
+require('JumperLib.JL_list')
 ---kd-tree with focus on using integer ID for references rather than tables, but tables are still used in leaf nodes.  
 ---Full class minimized estimated to 1317 char  
 ---Requires 'JumperLib.list'  
