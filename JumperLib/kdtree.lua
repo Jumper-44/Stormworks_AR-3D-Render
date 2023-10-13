@@ -67,7 +67,7 @@ IKDTree = function(...)
                 end
             end
         else -- is internal node and therefore search further down the tree
-            return insertRecursive( -- return to do tail call
+            return insertRecursive(
                 IKD_Tree[cd][pointID] < nSplit[nodeID] and nLeft[nodeID] or nRight[nodeID],
                 depth % k_dimensions + 1,
                 depth + 1
@@ -85,19 +85,16 @@ IKDTree = function(...)
 
     ---@section IKDTree_remove
     function removeRecursive(nodeID, cd, depth)
-        -- Could try to slightly balance tree if removing last or very few points in leaf
         points = nPoints[nodeID]
         if points then -- is not false and therefore a table and leaf node
             for i = 1, #points do
                 if pointID == points[i] then
-                    if i ~= #points then
-                        points[i] = points[#points]
-                    end
+                    points[i] = points[#points]
                     points[#points] = nil
                 end
             end
         else -- is internal node and therefore search further down the tree
-            return removeRecursive( -- return to do tail call
+            return removeRecursive(
             IKD_Tree[cd][pointID] < nSplit[nodeID] and nLeft[nodeID] or nRight[nodeID],
             depth % k_dimensions + 1,
             depth + 1
@@ -105,8 +102,7 @@ IKDTree = function(...)
         end
     end
 
-    ---Finds leaf containing point (assumed to be the same table and not contents/coordinates of point) and removes it from leaf.
-    ---Returns found point or nil if not found.
+    ---Finds leaf containing pointID and removes it from leaf.
     ---@param point table
     IKD_Tree.IKDTree_remove = function(point)
         pointID = point
