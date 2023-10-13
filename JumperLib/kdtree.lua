@@ -2,9 +2,11 @@
 -- GitHub: https://github.com/Jumper-44
 
 
-require('JumperLib.list')
 
----comment
+require('JumperLib.list')
+---kd-tree with focus on using integer ID for references rather than tables, but tables are still used in leaf nodes.  
+---Full class minimized estimated to 1317 char  
+---Requires 'JumperLib.list'  
 ---@section IKDTree 1 _IKDTREE_
 ---@param ... table -- expects ' {x,x,...,x},{y,y,...,y}, ..., {n,n,...,n} '
 ---@return IKDTree
@@ -173,8 +175,8 @@ end
 
 
 
-
----comment
+---kd-tree that does table references in nodes and for points
+---Full class minimized estimated to 1013 char
 ---@section KDTree 1 _KDTree_
 ---@param k_dimensions integer
 ---@return KDTree
