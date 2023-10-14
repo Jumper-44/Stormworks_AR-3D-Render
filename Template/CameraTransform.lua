@@ -21,13 +21,15 @@ do
     simulator:setProperty("w", 288)
     simulator:setProperty("h", 160)
     simulator:setProperty("near", 0.25)
-    simulator:setProperty("renderDistance", 1000)
+    simulator:setProperty("far", 1000)
     simulator:setProperty("sizeX", 0.7 * 1.8)
     simulator:setProperty("sizeY", 0.7)
     simulator:setProperty("positionOffsetX", 0)
     simulator:setProperty("positionOffsetY", 0.01)
 
     simulator:setProperty("tick", 0)
+
+    simulator:setProperty("GPS_to_camera", "0,0,0")
 
     -- Runs every tick just before onTick; allows you to simulate the inputs changing
     ---@param simulator Simulator Use simulator:<function>() to set inputs etc.
@@ -65,89 +67,20 @@ end
 --[====[ IN-GAME CODE ]====]
 
 
+require('JumperLib.JL_general')
+require('JumperLib.Math.JL_matrix_transformations')
 
-
-
---#region Initialization
-local tau = math.pi*2
-
-local Clamp = function(x,s,l) return x < s and s or x > l and l or x end
-
-local getNumber = function(...)
-    local r = {...}
-    for i = 1, #r do r[i] = input.getNumber(r[i]) end
-    return table.unpack(r)
-end
-
--- Vector3 Class
-local function Vec3(x,y,z) return
-    {x=x or 0; y=y or 0; z=z or 0;
-    add =       function(a,b)   return Vec3(a.x+b.x, a.y+b.y, a.z+b.z) end;
-    sub =       function(a,b)   return Vec3(a.x-b.x, a.y-b.y, a.z-b.z) end;
-    scale =     function(a,b)   return Vec3(a.x*b, a.y*b, a.z*b) end;
-    dot =       function(a,b)   return (a.x*b.x + a.y*b.y + a.z*b.z) end;
-    cross =     function(a,b)   return Vec3(a.y*b.z-a.z*b.y, a.z*b.x-a.x*b.z, a.x*b.y-a.y*b.x) end;
-    len =       function(a)     return a:dot(a)^0.5 end;
-    normalize = function(a)     return a:scale(1/a:len()) end;
-    unpack =    function(a,...) return a.x, a.y, a.z, ... end}
-end
-
-local MatrixMultiplication = function(m1,m2)
-    local r = {}
-    for i=1,#m2 do
-        r[i] = {}
-        for j=1,#m1[1] do
-            r[i][j] = 0
-            for k=1,#m1 do
-                r[i][j] = r[i][j] + m1[k][j] * m2[i][k]
-            end
-        end
-    end
-    return r
-end
-
-local MatMul3xVec3 = function(m,v)
-    return Vec3(
-        m[1][1]*v.x + m[2][1]*v.y + m[3][1]*v.z,
-        m[1][2]*v.x + m[2][2]*v.y + m[3][2]*v.z,
-        m[1][3]*v.x + m[2][3]*v.y + m[3][3]*v.z
-    )
-end
-
-local MatrixTranspose = function(m)
-    local r = {}
-    for i=1,#m[1] do
-        r[i] = {}
-        for j=1,#m do
-            r[i][j] = m[j][i]
-        end
-    end
-    return r
-end
-
-local getRotationMatrixZYX = function(ang)
-    local sx,sy,sz, cx,cy,cz = math.sin(ang.x),math.sin(ang.y),math.sin(ang.z), math.cos(ang.x),math.cos(ang.y),math.cos(ang.z)
-    return {
-        {cy*cz,                 cy*sz,               -sy,       0},
-        {-cx*sz + sx*sy*cz,     cx*cz + sx*sy*sz,    sx*cy,     0},
-        {sx*sz + cx*sy*cz,      -sx*cz + cx*sy*sz,   cx*cy,     0},
-        {0,                     0,                   0,         1}
-    }
-end
-
-local position, linearVelocity = Vec3(), Vec3() -- Y-axis is up
-local angle, angularVelocity = Vec3(), Vec3()
-local isRendering, isFemale = false, false
-local perspectiveProjectionMatrix, rotationMatrixZYX, translationMatrix, cameraTransformMatrix, cameraTranslation = {}, {}, {{1, 0, 0, 0},{0, 1, 0, 0},{0, 0, 1, 0},{0, 0, 0, 1}}, {}, Vec3()
-local OFFSET = {}
---#endregion Initialization
+local perspectiveProjectionMatrix, cameraTransformMatrix, lookX, lookY, headAzimuthAng, distance, headElevationAng
+local position, linearVelocity, angle, angularVelocity, head_position_offset, cameraTranslation, tempVec1_3d, tempVec2_3d = {}, {}, {}, {}, {}, {}, {}, {}
+local tempMatrix1_3x3, tempMatrix2_3x3, tempMatrix1_4x4, tempMatrix2_4x4, translationMatrix, rotationMatrixZYX = matrix_init(3, 3), matrix_init(3, 3), matrix_init(4, 4), matrix_init(4, 4),  matrix_initIdentity(4, 4), matrix_initIdentity(4, 4)
+local isRendering, isFemale, OFFSET = false, false, {}
 
 --#region Settings
 local SCREEN = {
     w = property.getNumber("w"),
     h = property.getNumber("h"),
     near = property.getNumber("near") + 0.625,
-    far = property.getNumber("renderDistance"),
+    far = property.getNumber("far"),
     sizeX = property.getNumber("sizeX"),
     sizeY = property.getNumber("sizeY"),
     positionOffsetX = property.getNumber("positionOffsetX"),
@@ -159,11 +92,7 @@ SCREEN.l = -SCREEN.sizeX/2 + SCREEN.positionOffsetX
 SCREEN.t = SCREEN.sizeY/2  + SCREEN.positionOffsetY
 SCREEN.b = -SCREEN.sizeY/2 + SCREEN.positionOffsetY
 
-OFFSET.GPS_to_camera = Vec3(
-    property.getNumber("x"),
-    property.getNumber("y"),
-    property.getNumber("z")
-)
+OFFSET.GPS_to_camera = str_to_vec(property.getText("GPS_to_camera"))
 
 OFFSET.tick = property.getNumber("tick")/60
 --#endregion Settings
@@ -174,54 +103,57 @@ function onTick()
     output.setBool(1, isRendering)
 
     if isRendering then
-        isFemale = input.getBool(2)
+        do -- calc cameraTransformMatrix
+            isFemale = input.getBool(2)
+            vec_init3d(position,        getNumber(1, 2, 3))
+            vec_init3d(angle,           getNumber(4, 5, 6))
+            vec_init3d(linearVelocity,  getNumber(7, 8, 9))
+            vec_init3d(angularVelocity, getNumber(10, 11, 12))
 
-        position = Vec3(getNumber(1, 2, 3))
-        angle = Vec3(getNumber(4, 5, 6))
-        linearVelocity = Vec3(getNumber(7, 8, 9))
-        angularVelocity = Vec3(getNumber(10, 11, 12))
+            -- head_position_offset
+            lookX, lookY = input.getNumber(13), input.getNumber(14)
+            headAzimuthAng =    clamp(lookX, -0.277, 0.277) * 0.408 * tau -- 0.408 is to make 100° to 40.8°
+            headElevationAng =  clamp(lookY, -0.125, 0.125) * 0.9 * tau + 0.404 + math.abs(headAzimuthAng/0.7101) * 0.122 -- 0.9 is to make 45° to 40.5°, 0.404 rad is 23.2°. 0.122 rad is 7° at max yaw.
 
-        local lookX, lookY = input.getNumber(13), input.getNumber(14)
-
-        -- CameraTransform calculation
-        do ------{ Player Head Position }------
-            local headAzimuthAng =    Clamp(lookX, -0.277, 0.277) * 0.408 * tau -- 0.408 is to make 100° to 40.8°
-            local headElevationAng =  Clamp(lookY, -0.125, 0.125) * 0.9 * tau + 0.404 + math.abs(headAzimuthAng/0.7101) * 0.122 -- 0.9 is to make 45° to 40.5°, 0.404 rad is 23.2°. 0.122 rad is 7° at max yaw.
-
-            local distance = math.cos(headAzimuthAng) * 0.1523
-            head_position_offset = Vec3(
+            distance = math.cos(headAzimuthAng) * 0.1523
+            head_position_offset = vec_init3d(head_position_offset,
                 math.sin(headAzimuthAng) * 0.1523,
                 math.sin(headElevationAng) * distance -(isFemale and 0.141 or 0.023),
                 math.cos(headElevationAng) * distance +(isFemale and 0.132 or 0.161)
             )
-            -----------------------------------
+            -- /head_position_offset/
 
-            --{ Perspective Projection Matrix Setup }--
-            local n = SCREEN.near - head_position_offset.z
-            local f = SCREEN.far
-            local r = SCREEN.r    - head_position_offset.x
-            local l = SCREEN.l    - head_position_offset.x
-            local t = SCREEN.t    - head_position_offset.y
-            local b = SCREEN.b    - head_position_offset.y
+            matrix_getPerspectiveProjection_facingZ(
+                SCREEN.near - head_position_offset[3], -- near
+                SCREEN.far                           , -- far
+                SCREEN.r    - head_position_offset[1], -- right
+                SCREEN.l    - head_position_offset[1], -- left
+                SCREEN.t    - head_position_offset[2], -- top
+                SCREEN.b    - head_position_offset[2], -- bottom
+                perspectiveProjectionMatrix -- return
+            )
 
-            -- Looking down the +Z axis, +X is right and +Y is up. Projects to clip space: x|y:coordinates [-w,w], z:depth [0,w], w:homogeneous coordinate
-            perspectiveProjectionMatrix = {
-                {2*n/(r-l),         0,              0,              0},
-                {0,                 2*n/(b-t),      0,              0},
-                {-(r+l)/(r-l),      -(b+t)/(b-t),   f/(f-n),        1},
-                {0,                 0,              -f*n/(f-n),     0}
-            }
+            vec_scale(angularVelocity, OFFSET.tick*tau, angularVelocity)
+            matrix_mult( -- rotation matrix with tick compensation
+                matrix_getRotZXY(angularVelocity[1],  angularVelocity[2], angularVelocity[3], tempMatrix1_3x3),
+                matrix_getRotZXY(angle[1],            angle[2],           angle[3],           tempMatrix2_3x3),
+                rotationMatrixZYX -- return
+            )
 
-            rotationMatrixZYX = MatrixMultiplication(getRotationMatrixZYX(angularVelocity:scale(OFFSET.tick*tau)), getRotationMatrixZYX(angle))
+            vec_add( -- cameraTranslation
+                vec_add(
+                    matrix_multVec3d(rotationMatrixZYX, vec_add(OFFSET.GPS_to_camera, head_position_offset, tempVec1_3d), tempVec2_3d), -- XYZ offset to physics sensor
+                    vec_scale(matrix_multVec3d(rotationMatrixZYX, linearVelocity, tempVec1_3d), OFFSET.tick, tempVec1_3d), -- position tick compensation
+                    cameraTranslation --return
+                ),
+                position, -- XYZ of physics sensor
+                cameraTranslation --return
+            )
 
-            cameraTranslation =
-                MatMul3xVec3( rotationMatrixZYX, OFFSET.GPS_to_camera:add(head_position_offset) ) -- gps offset
-                :add( MatMul3xVec3(rotationMatrixZYX, linearVelocity):scale(OFFSET.tick) ) -- Tick compensation
-                :add( position )
+            vec_scale(cameraTranslation, -1, translationMatrix[4]) -- set translation in translationMatrix
 
-            translationMatrix[4][1], translationMatrix[4][2], translationMatrix[4][3] = Vec3():sub(cameraTranslation):unpack()
-
-            cameraTransformMatrix = MatrixMultiplication(perspectiveProjectionMatrix, MatrixMultiplication(MatrixTranspose(rotationMatrixZYX), translationMatrix))
+            matrix_mult(matrix_transpose(rotationMatrixZYX, tempMatrix1_4x4), translationMatrix, tempMatrix2_4x4)
+            cameraTransformMatrix = matrix_mult(perspectiveProjectionMatrix, tempMatrix2_4x4, cameraTransformMatrix)
         end
 
         for i = 1, 4 do
@@ -245,7 +177,7 @@ function draw(points)
     local width, height = screen.getWidth(), screen.getHeight()
     local cx, cy = width/2, height/2
 
-    local buffer = MatrixMultiplication(cameraTransformMatrix, axisPoints)
+    local buffer = matrix_mult(cameraTransformMatrix, axisPoints)
 
     for i = 1, #points do
         local x,y,z,w = table.unpack(buffer[i])
