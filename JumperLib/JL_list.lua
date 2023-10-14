@@ -16,8 +16,8 @@ function list(elements, removed_id, id)
 
     removed_id = {}
 
-    ---@param new_elements table
-    ---@return integer -- returns the given id to new_elements
+    ---@param new_elements table new_elements[1] must not be nil
+    ---@return integer element_id returns the given id to new_elements
     elements.insert = function(new_elements)
         id = #removed_id > 0 and table.remove(removed_id) or #elements[1]+1
         for i = 1, #elements do
