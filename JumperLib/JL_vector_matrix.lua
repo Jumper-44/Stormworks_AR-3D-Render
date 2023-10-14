@@ -90,13 +90,14 @@ end
 ---@section str_to_vec
 ---Given a string with arbitrary length of the pattern "x,y,...,n" then return the table/vector {x, y, ..., n}
 ---@param str string
+---@param _return? table if table given with array entries then elements will be inserted after #_return
 ---@return vec
-function str_to_vec(str)
-    local vec = {}
+function str_to_vec(str, _return)
+    _return = _return or {}
     for v in str:gmatch("([^,]+)") do
-        vec[#vec+1] = tonumber(v)
+        _return[#_return+1] = tonumber(v)
     end
-    return vec
+    return _return
 end
 ---@endsection
 
