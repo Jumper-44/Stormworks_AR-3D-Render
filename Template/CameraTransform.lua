@@ -105,10 +105,10 @@ function onTick()
     if isRendering then
         do -- calc cameraTransformMatrix
             isFemale = input.getBool(2)
-            vec_init3d(position,        getNumber(1, 2, 3))
-            vec_init3d(angle,           getNumber(4, 5, 6))
-            vec_init3d(linearVelocity,  getNumber(7, 8, 9))
-            vec_init3d(angularVelocity, getNumber(10, 11, 12))
+            vec_init3d(position,        getNumber3(1, 2, 3))
+            vec_init3d(angle,           getNumber3(4, 5, 6))
+            vec_init3d(linearVelocity,  getNumber3(7, 8, 9))
+            vec_init3d(angularVelocity, getNumber3(10, 11, 12))
 
             -- head_position_offset
             lookX, lookY = input.getNumber(13), input.getNumber(14)
