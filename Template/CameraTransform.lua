@@ -70,9 +70,9 @@ end
 require('JumperLib.JL_general')
 require('JumperLib.Math.JL_matrix_transformations')
 
-local perspectiveProjectionMatrix, cameraTransformMatrix, lookX, lookY, headAzimuthAng, distance, headElevationAng
+local lookX, lookY, headAzimuthAng, distance, headElevationAng
 local position, linearVelocity, angle, angularVelocity, head_position_offset, cameraTranslation, tempVec1_3d, tempVec2_3d = {}, {}, {}, {}, {}, {}, {}, {}
-local tempMatrix1_3x3, tempMatrix2_3x3, tempMatrix1_4x4, tempMatrix2_4x4, translationMatrix, rotationMatrixZYX = matrix_init(3, 3), matrix_init(3, 3), matrix_init(4, 4), matrix_init(4, 4),  matrix_initIdentity(4, 4), matrix_initIdentity(4, 4)
+local tempMatrix1_3x3, tempMatrix2_3x3, tempMatrix1_4x4, tempMatrix2_4x4, translationMatrix, rotationMatrixZYX, perspectiveProjectionMatrix, cameraTransformMatrix = matrix_init(3, 3), matrix_init(3, 3), matrix_init(4, 4), matrix_init(4, 4),  matrix_initIdentity(4, 4), matrix_initIdentity(4, 4), matrix_init(4, 4), matrix_init(4, 4)
 local isRendering, isFemale, OFFSET = false, false, {}
 
 --#region Settings
@@ -153,7 +153,7 @@ function onTick()
             vec_scale(cameraTranslation, -1, translationMatrix[4]) -- set translation in translationMatrix
 
             matrix_mult(matrix_transpose(rotationMatrixZYX, tempMatrix1_4x4), translationMatrix, tempMatrix2_4x4)
-            cameraTransformMatrix = matrix_mult(perspectiveProjectionMatrix, tempMatrix2_4x4, cameraTransformMatrix)
+            matrix_mult(perspectiveProjectionMatrix, tempMatrix2_4x4, cameraTransformMatrix)
         end
 
         for i = 1, 4 do
