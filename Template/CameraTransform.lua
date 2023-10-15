@@ -135,8 +135,8 @@ function onTick()
 
             vec_scale(angularVelocity, OFFSET.tick*tau, angularVelocity)
             matrix_mult( -- rotation matrix with tick compensation
-                matrix_getRotZXY(angularVelocity[1],  angularVelocity[2], angularVelocity[3], tempMatrix1_3x3),
-                matrix_getRotZXY(angle[1],            angle[2],           angle[3],           tempMatrix2_3x3),
+                matrix_getRotZYX(angularVelocity[1],  angularVelocity[2], angularVelocity[3], tempMatrix1_3x3),
+                matrix_getRotZYX(angle[1],            angle[2],           angle[3],           tempMatrix2_3x3),
                 rotationMatrixZYX -- return
             )
 
