@@ -18,7 +18,17 @@ do
     ---@type Simulator -- Set properties and screen sizes here - will run once when the script is loaded
     simulator = simulator
     simulator:setScreen(1, "3x3")
-    simulator:setProperty("ExampleNumberProperty", 123)
+
+    simulator:setProperty("Laser_amount", 2)
+    simulator:setProperty("Laser_tick_offset", 6)
+
+    simulator:setProperty("Laser_GPS_to_head1", "-0.25, 0, 0")
+    simulator:setProperty("Laser_forward_dir1", "0, 0, 1")
+    simulator:setProperty("Laser_right_dir1", "1, 0, 0")
+
+    simulator:setProperty("Laser_GPS_to_head2", "0.25, 0, 0")
+    simulator:setProperty("Laser_forward_dir2", "0, 0, 1")
+    simulator:setProperty("Laser_right_dir2", "1, 0, 0")
 
     -- Runs every tick just before onTick; allows you to simulate the inputs changing
     ---@param simulator Simulator Use simulator:<function>() to set inputs etc.
@@ -51,240 +61,128 @@ end
 
 
 
----@class IKDTree
----@section IKDTree 1 _IKDTREE_
----@param k_dimensions interger
----@return table
-IKDTree = function(k_dimensions)
-    ---Returns the squared length between two points
-    ---@param pointA table
-    ---@param pointB table
-    ---@return number
-    local len2 = function(pointA, pointB)
-        local sum = 0
-        for i = 1, k_dimensions do
-            local dis = pointA[i] - pointB[i]
-            sum = sum + dis*dis
-        end
-        return sum
-    end
+require('JumperLib.DataStructures.JL_kdtree')
+require('JumperLib.Math.JL_matrix_transformations')
+require('JumperLib.JL_general')
 
-    local tree_root = {leaf = true}
-
-    return {
-        len2 = len2;
-
-        ---Inserts a point into the k-d tree
-        ---@param point table
-        IKDTree_insert = function(point)
-            local function insertRecursive(root, cd, depth)
-                if root.leaf then
-                    root[#root+1] = point
-                    if #root == 16 then -- Split node when it contains 16 points
-                        table.sort(root, function(a, b) return a[cd] < b[cd] end)
-                        root.leaf = false
-                        root.split = 0.5 * (root[8][cd] + root[9][cd])
-                        root.left = {leaf = true}
-                        root.right = {leaf = true}
-                        for i = 1, 8 do
-                            root.left[i] = root[i]
-                            root[i] = nil
-                        end
-                        for i = 9, 16 do
-                            root.right[i - 8] = root[i]
-                            root[i] = nil
-                        end
-                    end
-                else
-                    return insertRecursive(
-                        point[cd] < root.split and root.left or root.right,
-                        depth % k_dimensions + 1,
-                        depth + 1
-                    )
-                end
-            end
-
-            insertRecursive(tree_root, 1, 1)
-        end;
-
-        ---Returns the nearest point(s) in k-d tree to param point up to param maxNeighbors
-        ---Will set a value to root[i].len2 if node is traversed
-        ---@param point table
-        ---@param maxNeighbors integer
-        ---@return table
-        IKDTree_nearestNeighbors = function(point, maxNeighbors)
-            local nearestPoints = {
-                ---Insertion sort
-                ---@param self table
-                ---@param p table
-                insert = function(self, p)
-                    for i = 1, #self do
-                        if p.len2 < self[i].len2 then
-                            table.insert(self, i, p)
-                            return
-                        end
-                    end
-                    self[#self+1] = p
-                end
-            }
-
-            local function nearestNeighborsRecursive(root, depth)
-                local cd, nextBranch, ortherBranch = depth % k_dimensions + 1, root.right, root.left
-
-                if root.leaf then
-                    for i = 1, #root do
-                        root[i].len2 = len2(point, root[i])
-                        if #nearestPoints < maxNeighbors then
-                            nearestPoints:insert(root[i])
-                        else
-                            if root[i].len2 < nearestPoints[maxNeighbors].len2 then
-                                nearestPoints[maxNeighbors] = nil
-                                nearestPoints:insert(root[i])
-                            end
-                        end
-                    end
-                else
-                    if point[cd] < root.split then
-                        nextBranch, ortherBranch = root.left, root.right
-                    end
-
-                    nearestNeighborsRecursive(nextBranch, depth+1)
-                    local dist = point[cd] - root.split
-                    if #nearestPoints < maxNeighbors or nearestPoints[maxNeighbors].len2 >= dist*dist then
-                        nearestNeighborsRecursive(ortherBranch, depth+1)
-                    end
-                end
-            end
-
-            nearestNeighborsRecursive(tree_root, 0)
-            return nearestPoints
-        end;
-    }
-end
----@endsection _IKDTREE_
-
-local getNumber = function(...)
-    local r = {...}
-    for i = 1, #r do r[i] = input.getNumber(r[i]) end
-    return table.unpack(r)
-end
-
--- Vector3 Class
-local function Vec3(x,y,z) return
-    {x=x or 0; y=y or 0; z=z or 0;
-    add =       function(a,b)   return Vec3(a.x+b.x, a.y+b.y, a.z+b.z) end;
-    sub =       function(a,b)   return Vec3(a.x-b.x, a.y-b.y, a.z-b.z) end;
-    scale =     function(a,b)   return Vec3(a.x*b, a.y*b, a.z*b) end;
-    dot =       function(a,b)   return (a.x*b.x + a.y*b.y + a.z*b.z) end;
-    cross =     function(a,b)   return Vec3(a.y*b.z-a.z*b.y, a.z*b.x-a.x*b.z, a.x*b.y-a.y*b.x) end;
-    len =       function(a)     return a:dot(a)^0.5 end;
-    normalize = function(a)     return a:scale(1/a:len()) end;
-    unpack =    function(a,...) return a.x, a.y, a.z, ... end}
-end
-
-local MatMul3xVec3 = function(m,v)
-    return Vec3(
-        m[1][1]*v.x + m[2][1]*v.y + m[3][1]*v.z,
-        m[1][2]*v.x + m[2][2]*v.y + m[3][2]*v.z,
-        m[1][3]*v.x + m[2][3]*v.y + m[3][3]*v.z
-    )
-end
-
-local getRotationMatrixZYX = function(ang)
-    local sx,sy,sz, cx,cy,cz = math.sin(ang.x),math.sin(ang.y),math.sin(ang.z), math.cos(ang.x),math.cos(ang.y),math.cos(ang.z)
-    return {
-        {cy*cz,                 cy*sz,               -sy  },
-        {-cx*sz + sx*sy*cz,     cx*cz + sx*sy*sz,    sx*cy},
-        {sx*sz + cx*sy*cz,      -sx*cz + cx*sy*sz,   cx*cy}
-    }
-end
-
+-- init laser scan function
 local OFFSET_LASER_CENTER_TO_FACE = 0.125 + 0.017
 local PHI = (1 + 5^0.5) / 2
 local PHI_SQUARED = PHI * PHI
-local TAU = 2*math.pi
-local LASER_SCAN_FUNCTION = function(time)
-    local angle = TAU * (PHI * time % 1 - 0.5)
+local laser_scan_function = function(time)
+    local angle = tau * (PHI * time % 1 - 0.5)
     local radius = 1.5 * (PHI_SQUARED * time % 1 - 0.5)
     return radius * math.cos(angle), radius * math.sin(angle)
 end
 
+-- init laser buffer, offset, orientation
 local laser_xy_pivot_buffer = {}
 local laser_xy_pivot_buffer_index = 1
 local laser_xyz = {}
+local LASER_AMOUNT = property.getNumber("Laser_amount")
+local TICK_DELAY = property.getNumber("Laser_tick_offset")
+local OFFSET_GPS_TO_LASER = {}
+local LASER_ORIENTAION_MATRIX = {}
+for i = 1, LASER_AMOUNT do -- laser(s) config init
+    local forward, right, upward
+    forward = str_to_vec(property.getText("Laser_forward_dir"..i))
+    right = str_to_vec(property.getText("Laser_right_dir"..i))
+    upward = vec_cross(forward, right, {})
+    LASER_ORIENTAION_MATRIX[i] = {right, upward, forward}
 
+    OFFSET_GPS_TO_LASER[i] = str_to_vec(property.getText("Laser_GPS_to_head"..i))
+    vec_add(
+        OFFSET_GPS_TO_LASER[i],
+        vec_scale(forward, OFFSET_LASER_CENTER_TO_FACE, {}), -- offset from center block of laser head to block surface
+        OFFSET_GPS_TO_LASER[i] -- return
+    )
 
--- CONFIG
-local TICK_DELAY = 6
-local LASER_AMOUNT = 2
-local OFFSET_GPS_TO_LASER = {Vec3(-0.25, 0, OFFSET_LASER_CENTER_TO_FACE), Vec3(0.25, 0, OFFSET_LASER_CENTER_TO_FACE)}
--- \CONFIG\
-
-
-for i = 1, LASER_AMOUNT do
     laser_xy_pivot_buffer[i] = {x = {}, y = {}}
+    laser_xyz[i] = vec_init3d()
 end
-local position, angle, rotZYX
+
 local tick = 0
 local TIME_STEP = PHI/10
 local LASER_TIME_STEP = TIME_STEP / LASER_AMOUNT
-local kd_tree = IKDTree(3)
+
+local position, angle, rotationMatrixZYX = vec_init3d(), vec_init3d(), matrix_init(3, 3)
+local point_x, point_y, point_z = {}, {}, {}
+local points = list({point_x, point_y, point_z})
+local kd_tree = IKDTree(point_x, point_y, point_z)
+
+local temp1Vec3d, temp2Vec3d = vec_init3d(), vec_init3d()
 
 function onTick()
-    is_laser_on = input.getBool(1)
+    is_laser_scan_on = input.getBool(1)
 
     tick = tick + 1
     laser_xy_pivot_buffer_index = laser_xy_pivot_buffer_index % TICK_DELAY + 1
 
-    position = Vec3(getNumber(1, 2, 3))
-    angle = Vec3(getNumber(4, 5, 6))
+    if is_laser_scan_on then
+        vec_init3d(position, getNumber(1, 2, 3))
+        vec_init3d(angle, getNumber(4, 5, 6))
+        matrix_getRotZYX(angle[1], angle[2], angle[3], rotationMatrixZYX)
 
-    rotZYX = getRotationMatrixZYX(angle)
+        for i = 1, LASER_AMOUNT do
+            local laser_distance = input.getNumber(6 + i)
 
-    for i = 1, LASER_AMOUNT do
-        local laser_distance = input.getNumber(6 + i)
+            if laser_distance > 0 and laser_distance < 4000 and laser_xy_pivot_buffer[i].x[laser_xy_pivot_buffer_index] ~= nil then
+                local rY, rX = laser_xy_pivot_buffer[i].x[laser_xy_pivot_buffer_index], laser_xy_pivot_buffer[i].y[laser_xy_pivot_buffer_index]
+                local dist = math.cos(rX) * laser_distance
 
-        if laser_distance > 0 and laser_distance < 4000 and laser_xy_pivot_buffer[i].x[laser_xy_pivot_buffer_index] ~= nil then
-            local rY, rX = laser_xy_pivot_buffer[i].x[laser_xy_pivot_buffer_index], laser_xy_pivot_buffer[i].y[laser_xy_pivot_buffer_index]
-            local dist = math.cos(rX) * laser_distance
-            laser_xyz[i] = {
-                MatMul3xVec3(rotZYX, OFFSET_GPS_TO_LASER[i]:add(Vec3(
-                    math.sin(rY) * dist,
-                    math.sin(rX) * laser_distance,
-                    math.cos(rY) * dist
-                )))
-                :add(position)
-                :unpack()
-            }
+                vec_add( -- Add physics block position
+                    position,
+                    matrix_multVec3d( -- Orient vector to the vehicle world orientation
+                        rotationMatrixZYX,
+                        vec_add( -- Add offset vector from the GPS/physics block to the laser head
+                            OFFSET_GPS_TO_LASER[i],
+                            matrix_multVec3d( -- Orient laser ray vector to the vehicle laser block local orientation
+                                LASER_ORIENTAION_MATRIX[i],
+                                vec_init3d(temp1Vec3d,
+                                    math.sin(rY) * dist,
+                                    math.sin(rX) * laser_distance,
+                                    math.cos(rY) * dist
+                                ),
+                                temp2Vec3d -- return
+                            ),
+                            temp2Vec3d -- return
+                        ),
+                        temp1Vec3d -- return
+                    ),
+                    laser_xyz[i] -- return
+                )
 
-            local nn = kd_tree.IKDTree_nearestNeighbors(laser_xyz[i], 1)
-            if nn[1] == nil or nn[1].len2 > 0.01 then -- If nearest point in pointcloud is not too near then accept point
-                kd_tree.IKDTree_insert(laser_xyz[i]);
+                local nn = kd_tree.IKDTree_nearestNeighbors(laser_xyz[i], 1)
+                if nn[1] == nil or kd_tree.pointsLen2[nn[1]] > 0.01 then -- If nearest point in pointcloud is not too near then accept point
+                    kd_tree.IKDTree_insert(points.insert(laser_xyz[i]));
+                else
+                    vec_init3d(laser_xyz[i]) -- Set xyz to 0
+                end
             else
-                laser_xyz[i][1] = 0
-                laser_xyz[i][2] = 0
-                laser_xyz[i][3] = 0
+                vec_init3d(laser_xyz[i]) -- Set xyz to 0
             end
-        else
-            laser_xyz[i] = {0,0,0}
+
+            local x, y = laser_scan_function(tick * TIME_STEP + (i-1) * LASER_TIME_STEP)
+
+            laser_xy_pivot_buffer[i].x[laser_xy_pivot_buffer_index] = x / 8 * tau
+            laser_xy_pivot_buffer[i].y[laser_xy_pivot_buffer_index] = y / 8 * tau
+
+            local output_offset = (i - 1) * 5
+            output.setNumber(output_offset + 1, x)
+            output.setNumber(output_offset + 2, y)
+
+            for j = 1, 3 do
+                output.setNumber(output_offset + j + 2, laser_xyz[i][j])
+            end
         end
-
-        local x, y = LASER_SCAN_FUNCTION(tick * TIME_STEP + (i-1) * LASER_TIME_STEP)
-
-        if is_laser_on then
-            laser_xy_pivot_buffer[i].x[laser_xy_pivot_buffer_index] = x / 8 * TAU
-            laser_xy_pivot_buffer[i].y[laser_xy_pivot_buffer_index] = y / 8 * TAU
-        else
+    else
+        for i = 1, LASER_AMOUNT do
             laser_xy_pivot_buffer[i].x[laser_xy_pivot_buffer_index] = nil
             laser_xy_pivot_buffer[i].y[laser_xy_pivot_buffer_index] = nil
         end
 
-        local output_offset = (i - 1) * 5
-        output.setNumber(output_offset + 1, x)
-        output.setNumber(output_offset + 2, y)
-
-        for j = 1, 3 do
-            output.setNumber(output_offset + j + 2, laser_xyz[i][j])
+        for i = 1, 32 do
+            output.setNumber(i, 0)
         end
     end
 end
