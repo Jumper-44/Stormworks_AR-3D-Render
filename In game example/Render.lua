@@ -93,7 +93,7 @@ local px_cx_pos, px_cy_pos = px_cx + property.getNumber("pxOffsetX"), px_cy + pr
 
 -- Getting near and far to linearize depth
 -- zNear * zFar / (zFar + d * (zNear - zFar))
-local near, far = property.getNumber("near"), property.getNumber("renderDistance")
+local near, far = property.getNumber("near"), property.getNumber("far")
 local n_mul_f = near*far
 local n_sub_f = near-far
 --#endregion Settings
@@ -105,7 +105,7 @@ local getNumber = function(...)
     return table.unpack(r)
 end
 
-local cameraTransform, cameraTranslation = {}, {}
+local cameraTransform = {}
 --#endregion Initialization
 
 --#region Render Function(s)
@@ -114,16 +114,16 @@ local WorldToScreen_points = function(points)
 
     for i = 1, #points do
         local X, Y, Z, W =
-            points[i][1] - cameraTranslation[1],
-            points[i][2] - cameraTranslation[2],
-            points[i][3] - cameraTranslation[3],
+            points[i][1],
+            points[i][2],
+            points[i][3],
             0
 
         X,Y,Z,W =
-            cameraTransform[1]*X + cameraTransform[5]*Y + cameraTransform[9]*Z,                         -- + cameraTransform[13],
-            cameraTransform[2]*X + cameraTransform[6]*Y + cameraTransform[10]*Z,                        -- + cameraTransform[14],
-            cameraTransform[3]*X + cameraTransform[7]*Y + cameraTransform[11]*Z + cameraTransform[13],  -- + cameraTransform[15],
-            cameraTransform[4]*X + cameraTransform[8]*Y + cameraTransform[12]*Z                         -- + cameraTransform[16]
+            cameraTransform[1]*X + cameraTransform[5]*Y + cameraTransform[9]*Z  + cameraTransform[13],
+            cameraTransform[2]*X + cameraTransform[6]*Y + cameraTransform[10]*Z + cameraTransform[14],
+            cameraTransform[3]*X + cameraTransform[7]*Y + cameraTransform[11]*Z + cameraTransform[15],
+            cameraTransform[4]*X + cameraTransform[8]*Y + cameraTransform[12]*Z + cameraTransform[16]
 
         -- is the point within the frustum
         if 0<=Z and Z<=W  and  -W<=X and X<=W  and  -W<=Y and Y<=W then
@@ -153,16 +153,16 @@ local WorldToScreen_triangles = function(triangle_buffer, isRemovingOutOfViewTri
 
             if vertices_buffer[id] == nil then -- is the transformed vertex NOT already calculated
                 local X, Y, Z, W =
-                    currentVertex[1] - cameraTranslation[1],
-                    currentVertex[2] - cameraTranslation[2],
-                    currentVertex[3] - cameraTranslation[3],
+                    currentVertex[1],
+                    currentVertex[2],
+                    currentVertex[3],
                     0
 
                 X,Y,Z,W =
-                    cameraTransform[1]*X + cameraTransform[5]*Y + cameraTransform[9]*Z,                         -- + cameraTransform[13],
-                    cameraTransform[2]*X + cameraTransform[6]*Y + cameraTransform[10]*Z,                        -- + cameraTransform[14],
-                    cameraTransform[3]*X + cameraTransform[7]*Y + cameraTransform[11]*Z + cameraTransform[13],  -- + cameraTransform[15],
-                    cameraTransform[4]*X + cameraTransform[8]*Y + cameraTransform[12]*Z                         -- + cameraTransform[16]
+                    cameraTransform[1]*X + cameraTransform[5]*Y + cameraTransform[9]*Z  + cameraTransform[13],
+                    cameraTransform[2]*X + cameraTransform[6]*Y + cameraTransform[10]*Z + cameraTransform[14],
+                    cameraTransform[3]*X + cameraTransform[7]*Y + cameraTransform[11]*Z + cameraTransform[15],
+                    cameraTransform[4]*X + cameraTransform[8]*Y + cameraTransform[12]*Z + cameraTransform[16]
 
                 if 0<=Z and Z<=W then -- Is vertex between near and far plane
                     local w = 1/W
@@ -272,9 +272,7 @@ function onTick()
     if input.getBool(2) then laserPoints = {} end
 
     if isRendering then
-        cameraTransform = {getNumber(1,2,3,4,5,6,7,8,9,10,11,12,13)}
-        cameraTranslation = {getNumber(14,15,16)}
-
+        cameraTransform = {getNumber(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16)}
 
         rigGPS = {getNumber(17,18,19)}
         rigAng = {getNumber(20,21,22)}
