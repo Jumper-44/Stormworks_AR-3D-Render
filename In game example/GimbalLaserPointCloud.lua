@@ -118,6 +118,11 @@ local temp1Vec3d, temp2Vec3d = vec_init3d(), vec_init3d()
 
 function onTick()
     is_laser_scan_on = input.getBool(1)
+    if input.getBool(2) then -- clear
+        point_x, point_y, point_z = {}, {}, {}
+        points = list({point_x, point_y, point_z})
+        kd_tree = IKDTree(point_x, point_y, point_z)
+    end
 
     tick = tick + 1
     laser_xy_pivot_buffer_index = laser_xy_pivot_buffer_index % TICK_DELAY + 1
