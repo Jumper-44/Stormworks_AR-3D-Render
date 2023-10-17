@@ -119,8 +119,8 @@ function onTick()
     laser_xy_pivot_buffer_index = laser_xy_pivot_buffer_index % TICK_DELAY + 1
 
     if is_laser_scan_on then
-        vec_init3d(position, getNumber(1, 2, 3))
-        vec_init3d(angle, getNumber(4, 5, 6))
+        vec_init3d(position, getNumber3(1, 2, 3))
+        vec_init3d(angle, getNumber3(4, 5, 6))
         matrix_getRotZYX(angle[1], angle[2], angle[3], rotationMatrixZYX)
 
         for i = 1, LASER_AMOUNT do
@@ -130,6 +130,7 @@ function onTick()
                 local rY, rX = laser_xy_pivot_buffer[i].x[laser_xy_pivot_buffer_index], laser_xy_pivot_buffer[i].y[laser_xy_pivot_buffer_index]
                 local dist = math.cos(rX) * laser_distance
 
+                -- calc laser endpoint xyz
                 vec_add( -- Add physics block position
                     position,
                     matrix_multVec3d( -- Orient vector to the vehicle world orientation
@@ -138,10 +139,10 @@ function onTick()
                             OFFSET_GPS_TO_LASER[i],
                             matrix_multVec3d( -- Orient laser ray vector to the vehicle laser block local orientation
                                 LASER_ORIENTAION_MATRIX[i],
-                                vec_init3d(temp1Vec3d,
-                                    math.sin(rY) * dist,
-                                    math.sin(rX) * laser_distance,
-                                    math.cos(rY) * dist
+                                vec_init3d(temp1Vec3d,              -- return
+                                    math.sin(rY) * dist,            -- x
+                                    math.sin(rX) * laser_distance,  -- y
+                                    math.cos(rY) * dist             -- z
                                 ),
                                 temp2Vec3d -- return
                             ),
@@ -152,6 +153,7 @@ function onTick()
                     laser_xyz[i] -- return
                 )
 
+                -- density filter
                 local nn = kd_tree.IKDTree_nearestNeighbors(laser_xyz[i], 1)
                 if nn[1] == nil or kd_tree.pointsLen2[nn[1]] > 0.01 then -- If nearest point in pointcloud is not too near then accept point
                     kd_tree.IKDTree_insert(points.insert(laser_xyz[i]));
