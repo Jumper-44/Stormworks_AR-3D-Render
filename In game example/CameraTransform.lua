@@ -173,9 +173,9 @@ function onTick()
         end
 
         -- passthrough laser coordinates
-        -- input channel [21;26]
-        -- output channel [23;28]
-        for i = 21, 26 do
+        -- input channel [21;29]
+        -- output channel [23;31]
+        for i = 21, 31 do
             output.setNumber(i + 2, input.getNumber(i))
         end
     end
