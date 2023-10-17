@@ -91,9 +91,9 @@ local px_cx_pos, px_cy_pos = px_cx + property.getNumber("pxOffsetX"), px_cy + pr
 --- x = {},
 --- y = {},
 --- z = {},
---- sv = {},
 --- sx = {},
 --- sy = {},
+--- sz = {},
 --- isVisible = {}
 ---}
 ---@param cameraTransform table
