@@ -89,8 +89,8 @@ require('JumperLib.Math.JL_matrix_transformations')
 require('JumperLib.JL_general')
 
 
-
-local px_cx, px_cy = property.getNumber("w")/2, property.getNumber("h")/2
+local width, height = property.getNumber("w"), property.getNumber("h")
+local px_cx, px_cy = width/2, height/2
 local px_cx_pos, px_cy_pos = px_cx + property.getNumber("pxOffsetX"), px_cy + property.getNumber("pxOffsetY")
 
 -- Getting near and far to linearize depth
@@ -296,10 +296,15 @@ function onDraw()
                 laserInView = laserInView + 1
                 -- zNear * zFar / (zFar + d * (zNear - zFar))
                 local dis = n_mul_f / (far + sz[i]*n_sub_f)
-                screen.setColor(dis, 255/dis, dis*10%255, 150)
-                screen.drawCircleF(sx[i], sy[i], math.max(2.5 - dis, 0.6))
+                screen.setColor(dis, 255/dis, dis*10%255, clamp(500-dis*20, 100, 240))
+                screen.drawCircleF(sx[i], sy[i], clamp(7 - dis, 1, 6.5))
+
+                --dis = math.max(10 - dis, 3)
+                --screen.drawRectF(sx[i] - dis, sy[i] - dis, dis, dis)
             end
         end
+        screen.setColor(0, 0, 0, 200)
+        screen.drawRectF(0, 0, width, height)
 
         -- triangles
         matrix_getRotZYX(rigAng[1], rigAng[2], rigAng[3], rotationMatrixZYX)
