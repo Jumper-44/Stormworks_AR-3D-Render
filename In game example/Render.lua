@@ -24,6 +24,7 @@ do
     simulator:setProperty("pxOffsetX", 0)
     simulator:setProperty("pxOffsetY", 0)
 
+    simulator:setProperty("Laser_amount", 2)
     simulator:setProperty("b64", "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/")
 
     simulator:setProperty("v1", "BBIgAAA/8AAABASAAABBJgAAA/8AAABASAAABBJgAABACAAABASAAABBIgAABACAAABASAAABBIgAAA/8AAABAWAAABBJgAAA/8AAABAWAAABBJgAABACAAABAWAAA")
@@ -84,10 +85,11 @@ end
 --[====[ IN-GAME CODE ]====]
 
 
+require('JumperLib.Math.JL_matrix_transformations')
+require('JumperLib.JL_general')
 
 
 
---#region Settings
 local px_cx, px_cy = property.getNumber("w")/2, property.getNumber("h")/2
 local px_cx_pos, px_cy_pos = px_cx + property.getNumber("pxOffsetX"), px_cy + property.getNumber("pxOffsetY")
 
@@ -96,121 +98,116 @@ local px_cx_pos, px_cy_pos = px_cx + property.getNumber("pxOffsetX"), px_cy + pr
 local near, far = property.getNumber("near"), property.getNumber("far")
 local n_mul_f = near*far
 local n_sub_f = near-far
---#endregion Settings
-
---#region Initialization
-local getNumber = function(...)
-    local r = {...}
-    for i = 1, #r do r[i] = input.getNumber(r[i]) end
-    return table.unpack(r)
-end
-
 local cameraTransform = {}
 --#endregion Initialization
 
 --#region Render Function(s)
-local WorldToScreen_points = function(points)
-    local point_buffer = {}
-
-    for i = 1, #points do
+---point_buffer = {
+--- x = {},
+--- y = {},
+--- z = {},
+--- sx = {},
+--- sy = {},
+--- sz = {},
+--- isVisible = {}
+---}
+---@param cameraTransform table
+---@param point_buffer table
+local WorldToScreen_points = function(cameraTransform, point_buffer)
+    for i = 1, #point_buffer.x do
         local X, Y, Z, W =
-            points[i][1],
-            points[i][2],
-            points[i][3],
-            0
+            point_buffer.x[i],
+            point_buffer.y[i],
+            point_buffer.z[i],
+            1
 
-        X,Y,Z,W =
-            cameraTransform[1]*X + cameraTransform[5]*Y + cameraTransform[9]*Z  + cameraTransform[13],
+            X,Y,Z,W =
+            cameraTransform[1]*X + cameraTransform[5]*Y + cameraTransform[9]*Z + cameraTransform[13],
             cameraTransform[2]*X + cameraTransform[6]*Y + cameraTransform[10]*Z + cameraTransform[14],
             cameraTransform[3]*X + cameraTransform[7]*Y + cameraTransform[11]*Z + cameraTransform[15],
             cameraTransform[4]*X + cameraTransform[8]*Y + cameraTransform[12]*Z + cameraTransform[16]
 
-        -- is the point within the frustum
-        if 0<=Z and Z<=W  and  -W<=X and X<=W  and  -W<=Y and Y<=W then
+        point_buffer.isVisible[i] = 0<=Z and Z<=W  and  -W<=X and X<=W  and  -W<=Y and Y<=W
+        if point_buffer.isVisible[i] then
             W = 1/W
-            -- point := {x[0;width], y[0;height], depth[0;1]}
-            point_buffer[#point_buffer+1] = {X*W*px_cx + px_cx_pos, Y*W*px_cy + px_cy_pos, Z*W}
+            point_buffer.sx[i] = X*W*px_cx + px_cx_pos      -- [0, width]
+            point_buffer.sy[i] = Y*W*px_cy + px_cy_pos      -- [0, height]
+            point_buffer.sz[i] = Z*W                        -- [0, 1]   NOT linear
         end
     end
-
-    return point_buffer
 end
 
--- A triangle_buffer consist of {v1, v2, v3, color}
--- 'v = {x,y,z,id}'
--- 'color = {r,g,b}'
--- The 5th index for every triangle will be set to {tv1, tv2, tv3, triangle_depth}' by the function. 'tv' is the triangle transformed vertex
-local WorldToScreen_triangles = function(triangle_buffer, isRemovingOutOfViewTriangles)
-    local vertices_buffer = {}
+---vertex_buffer = {
+--- x = {},
+--- y = {},
+--- z = {},
+--- sx = {},
+--- sy = {},
+--- sz = {},
+--- frame = {},
+--- inNearAndFar = {},
+--- isVisible = {}
+---}                                            
+---triangle_buffer = {v1_id, v2_id, v3_id, centroid_depth, r, g, b}                 
+---frameCount is a number which is unique for each call, so just increment it.
+---@param cameraTransform table
+---@param vertex_buffer table
+---@param triangle_buffer table
+---@param frameCount number
+---@return table
+local WorldToScreen_triangles = function(cameraTransform, vertex_buffer, triangle_buffer, frameCount)
+    local vx, vy, vz, sx, sy, sz, vframe, visVisible, vinNearAndFar, new_triangle_buffer =
+        vertex_buffer.x,  vertex_buffer.y,  vertex_buffer.z,
+        vertex_buffer.sx, vertex_buffer.sy, vertex_buffer.sz,
+        vertex_buffer.frame, vertex_buffer.isVisible, vertex_buffer.inNearAndFar, {}
 
-    for i = #triangle_buffer, 1, -1 do -- Reverse iteration, so indexes can be removed from triangle_buffer while traversing if 'isRemovingOutOfViewTriangles == true'
-        local currentTriangle, transformed_vertices = triangle_buffer[i], {}
-
-        -- Loop is for finding or calculating the 3 transformed_vertices of currentTriangle
+    for i = 1, #triangle_buffer do
+        local currentTriangle = triangle_buffer[i]
         for j = 1, 3 do
-            local currentVertex = currentTriangle[j]
-            local id = currentVertex[4]
+            local vertex_id = currentTriangle[j]
 
-            if vertices_buffer[id] == nil then -- is the transformed vertex NOT already calculated
+            if vframe[vertex_id] ~= frameCount then -- is the transformed vertex NOT already calculated
                 local X, Y, Z, W =
-                    currentVertex[1],
-                    currentVertex[2],
-                    currentVertex[3],
-                    0
+                    vx[vertex_id],
+                    vy[vertex_id],
+                    vz[vertex_id],
+                    1
 
                 X,Y,Z,W =
-                    cameraTransform[1]*X + cameraTransform[5]*Y + cameraTransform[9]*Z  + cameraTransform[13],
+                    cameraTransform[1]*X + cameraTransform[5]*Y + cameraTransform[9]*Z + cameraTransform[13],
                     cameraTransform[2]*X + cameraTransform[6]*Y + cameraTransform[10]*Z + cameraTransform[14],
                     cameraTransform[3]*X + cameraTransform[7]*Y + cameraTransform[11]*Z + cameraTransform[15],
                     cameraTransform[4]*X + cameraTransform[8]*Y + cameraTransform[12]*Z + cameraTransform[16]
 
-                if 0<=Z and Z<=W then -- Is vertex between near and far plane
-                    local w = 1/W
-                    transformed_vertices[j] = {
-                        X*w*px_cx + px_cx_pos, -- x
-                        Y*w*px_cy + px_cy_pos, -- y
-                        Z*w,                   -- z | depth[0;1]
-                        -W<=X and X<=W  and  -W<=Y and Y<=W -- Is vertex in frustum
-                    }
-                    vertices_buffer[id] = transformed_vertices[j]
-                else
-                    vertices_buffer[id] = false
-                    transformed_vertices[j] = false
+                vinNearAndFar[vertex_id] = 0<=Z and Z<=W
+                if vinNearAndFar[vertex_id] then -- Is vertex between near and far plane
+                    visVisible[vertex_id] = -W<=X and X<=W  and  -W<=Y and Y<=W -- Is vertex in frustum (excluded near and far plane test)
+
+                    W = 1/W
+                    sx[vertex_id] = X*W*px_cx + px_cx_pos
+                    sy[vertex_id] = Y*W*px_cy + px_cy_pos
+                    sz[vertex_id] = Z*W
                 end
-            else
-                transformed_vertices[j] = vertices_buffer[id]
             end
         end
 
-        local v1, v2, v3 = transformed_vertices[1], transformed_vertices[2], transformed_vertices[3]
-        if
-            v1 and v2 and v3                                                                            -- Are all vertices within near and far plane
-            and (v1[4] or v2[4] or v3[4])                                                               -- and atleast 1 visible in frustum
-            and (v1[1]*v2[2] - v2[1]*v1[2] + v2[1]*v3[2] - v3[1]*v2[2] + v3[1]*v1[2] - v1[1]*v3[2] > 0) -- and is the triangle facing the camera (backface culling CCW. Flip '>' for CW. Can be removed if triangles aren't consistently ordered CCW/CW)
+        local v1, v2, v3 = currentTriangle[1], currentTriangle[2], currentTriangle[3]
+        if -- (Most average cases) determining if triangle is visible / should be rendered
+            vinNearAndFar[v1] and vinNearAndFar[v2] and vinNearAndFar[v3]                                           -- Are all vertices within near and far plane
+            and (visVisible[v1] or visVisible[v2] or visVisible[v3])                                                -- and atleast 1 visible in frustum
+            and (sx[v1]*sy[v2] - sx[v2]*sy[v1] + sx[v2]*sy[v3] - sx[v3]*sy[v2] + sx[v3]*sy[v1] - sx[v1]*sy[v3] > 0) -- and is the triangle facing the camera (backface culling CCW. Flip '>' for CW. Can be removed if triangles aren't consistently ordered CCW/CW)
         then
-            currentTriangle[5] = {
-                v1,
-                v2,
-                v3,
-                v1[3] + v2[3] + v3[3] -- triangle depth for doing painter's algorithm
-            }
-        elseif isRemovingOutOfViewTriangles then
-            table.remove(triangle_buffer, i)
-        else
-            currentTriangle[5] = false
+            currentTriangle[4] = sz[v1] + sz[v2] + sz[v3] -- centroid depth for sort
+            new_triangle_buffer[#new_triangle_buffer+1] = currentTriangle
         end
     end
 
-    -- painter's algorithm
-    table.sort(triangle_buffer,
-        function(t1,t2)
-            return t1[5] and t2[5] and (t1[5][4] > t2[5][4])
-        end
-    )
+    table.sort(new_triangle_buffer, function(t1,t2) return t1[4] > t2[4] end) -- painter's algorithm | triangle centroid depth sort
+    return new_triangle_buffer
 end
---#endregion Render Function(s)
+--#endregion
 
---#region custom
+--#region property_read_base64
 local b64 = property.getText("b64")
 
 local function base64_to_float(str)
@@ -238,103 +235,102 @@ local decode_base64 = function(name_str, row_len)
 
     return matrix
 end
-
-local MatrixMultiplication = function(m1,m2)
-    local r = {}
-    for i=1,#m2 do
-        r[i] = {}
-        for j=1,#m1[1] do
-            r[i][j] = 0
-            for k=1,#m1 do
-                r[i][j] = r[i][j] + m1[k][j] * m2[i][k]
-            end
-        end
-    end
-    return r
-end
-
-local getRotationMatrixZYX = function(ang)
-    local sx,sy,sz, cx,cy,cz = math.sin(ang[1]),math.sin(ang[2]),math.sin(ang[3]), math.cos(ang[1]),math.cos(ang[2]),math.cos(ang[3])
-    return {
-        {cy*cz,                 cy*sz,              -sy  },
-        {-cx*sz + sx*sy*cz,     cx*cz + sx*sy*sz,   sx*cy},
-        {sx*sz + cx*sy*cz,      -sx*cz + cx*sy*sz,  cx*cy}
-    }
-end
---#endregion custom
+--#endregion
 
 local VERTEX_DATA, TRIANGLE_DATA, COLOR_DATA = decode_base64("v", 3), decode_base64("t", 3), decode_base64("c", 3)
-local vertex_buffer, triangle_buffer = {}, {}
-local laserPoints = {}
+local vertex_buffer, triangle_list, triangle_buffer = {x={}, y={}, z={}, sx={}, sy={}, sz={}, frame={}, inNearAndFar={}, isVisible={}}, {}, {}
+local rigGPS, rigAng, LASER_AMOUNT, laserPoints = {}, {}, property.getNumber("Laser_amount"), {x = {}, y = {}, z = {}, sx = {}, sy = {}, sz = {}, isVisible = {}} 
+local rotationMatrixZYX, tempVec3d, frame = matrix_init(3, 3), vec_init3d(), 0
+
+for i = 1, #TRIANGLE_DATA do
+    triangle_list[i] = {
+        TRIANGLE_DATA[i][1],
+        TRIANGLE_DATA[i][2],
+        TRIANGLE_DATA[i][3],
+        0,
+        COLOR_DATA[i][1],
+        COLOR_DATA[i][2],
+        COLOR_DATA[i][3]
+    }
+end
 
 function onTick()
     isRendering = input.getBool(1)
-    if input.getBool(2) then laserPoints = {} end
+    if input.getBool(2) then -- laser clear
+        laserPoints.x = {}
+        laserPoints.y = {}
+        laserPoints.z = {}
+    end
 
     if isRendering then
-        cameraTransform = {getNumber(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16)}
+        for i = 1, 16 do
+            cameraTransform[i] = input.getNumber(i)
+        end
 
-        rigGPS = {getNumber(17,18,19)}
-        rigAng = {getNumber(20,21,22)}
+        vec_init3d(rigGPS, getNumber3(17,18,19))
+        vec_init3d(rigAng, getNumber3(20,21,22))
 
-        laserCoords = {{getNumber(23,24,25)}, {getNumber(26,27,28)}}
-        for i = 1, #laserCoords do
-            if laserCoords[i][1] ~= 0 and laserCoords[i][1] ~= 0 then
-                local id = #laserPoints+1
-                laserCoords[i][4] = id
-                laserPoints[id] = laserCoords[i]
+        for i = 1, LASER_AMOUNT do
+            local i_offset = (i-1) * 3
+            vec_init3d(tempVec3d, getNumber3(23+i_offset, 24+i_offset, 25+i_offset))
+
+            if tempVec3d[1] ~= 0 and tempVec3d[2] ~= 0 then
+                local id = #laserPoints.x+1
+                laserPoints.x[id] = tempVec3d[1]
+                laserPoints.y[id] = tempVec3d[2]
+                laserPoints.z[id] = tempVec3d[3]
             end
         end
     end
 end
 
-
 function onDraw()
     if isRendering then
-        points = WorldToScreen_points(laserPoints)
-        for i = 1, #points do
-            local point = points[i]
+        frame = frame + 1
 
-            -- zNear * zFar / (zFar + d * (zNear - zFar))
-            local dis = n_mul_f / (far + point[3]*n_sub_f)
-            screen.setColor(dis, 255/dis, dis*10%255, 150)
-            screen.drawCircleF(point[1], point[2], math.max(2.5 - dis, 0.6))
-        end
-
-
-        vertex_buffer = MatrixMultiplication(getRotationMatrixZYX(rigAng), VERTEX_DATA)
-        for i = 1, #VERTEX_DATA do
-            for k = 1, 3 do
-                vertex_buffer[i][k] = vertex_buffer[i][k] + rigGPS[k]
+        -- laserPoints
+        WorldToScreen_points(cameraTransform, laserPoints)
+        local isVisible, sx, sy, sz, laserInView = laserPoints.isVisible, laserPoints.sx, laserPoints.sy, laserPoints.sz, 0
+        for i = 1, #laserPoints.x do
+            if isVisible[i] then
+                laserInView = laserInView + 1
+                -- zNear * zFar / (zFar + d * (zNear - zFar))
+                local dis = n_mul_f / (far + sz[i]*n_sub_f)
+                screen.setColor(dis, 255/dis, dis*10%255, 150)
+                screen.drawCircleF(sx[i], sy[i], math.max(2.5 - dis, 0.6))
             end
-            vertex_buffer[i][4] = i -- set unique id
         end
 
-        for i = 1, #TRIANGLE_DATA do
-            triangle_buffer[i] = {
-                vertex_buffer[ TRIANGLE_DATA[i][1] ],
-                vertex_buffer[ TRIANGLE_DATA[i][2] ],
-                vertex_buffer[ TRIANGLE_DATA[i][3] ],
-                COLOR_DATA[i]
-            }
+        -- triangles
+        matrix_getRotZYX(rigAng[1], rigAng[2], rigAng[3], rotationMatrixZYX)
+        matrix_mult(rotationMatrixZYX, VERTEX_DATA, vertex_buffer)
+        for i = 1, #VERTEX_DATA do
+            vec_add(
+                matrix_multVec3d(rotationMatrixZYX, VERTEX_DATA[i], tempVec3d),
+                rigGPS,
+                tempVec3d -- return
+            )
+            vertex_buffer.x[i] = tempVec3d[1]
+            vertex_buffer.y[i] = tempVec3d[2]
+            vertex_buffer.z[i] = tempVec3d[3]
         end
 
-        WorldToScreen_triangles(triangle_buffer, true)
+        triangle_buffer = WorldToScreen_triangles(cameraTransform, vertex_buffer, triangle_list, frame)
+        sx, sy = vertex_buffer.sx, vertex_buffer.sy
         for i = 1, #triangle_buffer do
-            local tri = triangle_buffer[i][5]
-
+            local tri = triangle_buffer[i]
+            local v1, v2, v3 = tri[1], tri[2], tri[3]
             if tri then
-                local color = triangle_buffer[i][4]
-                screen.setColor(color[1], color[2], color[3], 225)
-                screen.drawTriangleF(tri[1][1], tri[1][2], tri[2][1], tri[2][2], tri[3][1], tri[3][2])
+                screen.setColor(tri[5], tri[6], tri[7], 225)
+                screen.drawTriangleF(sx[v1], sy[v1], sx[v2], sy[v2], sx[v3], sy[v3])
 
                 screen.setColor(255,255,255,100) -- wireframe color
-                screen.drawTriangle(tri[1][1], tri[1][2], tri[2][1], tri[2][2], tri[3][1], tri[3][2])
+                screen.drawTriangle(sx[v1], sy[v1], sx[v2], sy[v2], sx[v3], sy[v3])
             end
         end
 
         screen.setColor(255,255,0, 100)
-        screen.drawText(0,7, "L:"..#points)
+        screen.drawText(0,7, "L:"..laserInView)
         screen.drawText(0,14, "T:"..#triangle_buffer)
     end
 end
