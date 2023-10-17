@@ -21,6 +21,8 @@ do
 
     simulator:setProperty("Laser_amount", 2)
     simulator:setProperty("Laser_tick_offset", 6)
+    simulator:setProperty("Point_Min_Density_Squared", 0.01)
+    simulator:setProperty("Laser_Spread_Multiplier", 1.6)
 
     simulator:setProperty("Laser_GPS_to_head1", "-0.25, 0, 0")
     simulator:setProperty("Laser_forward_dir1", "0, 0, 1")
@@ -66,21 +68,23 @@ require('JumperLib.Math.JL_matrix_transformations')
 require('JumperLib.JL_general')
 
 -- init laser scan function
-local OFFSET_LASER_CENTER_TO_FACE = 0.125 + 0.017
 local PHI = (1 + 5^0.5) / 2
-local PHI_SQUARED = PHI * PHI
+local LASER_SPREAD_MULTIPLIER = property.getNumber("Laser_Spread_Multiplier")
 local laser_scan_function = function(time)
-    local angle = tau * (PHI * time % 1 - 0.5)
-    local radius = 1.5 * (PHI_SQUARED * time % 1 - 0.5)
-    return radius * math.cos(angle), radius * math.sin(angle)
+    --local angle = tau * (PHI * time % 1 - 0.5)
+    --local radius = LASER_SPREAD_MULTIPLIER * (tau * time % 1 - 0.5)
+    --return radius * math.cos(angle), radius * math.sin(angle)
+    return (math.random()-.5)*LASER_SPREAD_MULTIPLIER, (math.random()-.5)*LASER_SPREAD_MULTIPLIER
 end
 
 -- init laser buffer, offset, orientation
+local OFFSET_LASER_CENTER_TO_FACE = 0.125 + 0.017
 local laser_xy_pivot_buffer = {}
 local laser_xy_pivot_buffer_index = 1
 local laser_xyz = {}
 local LASER_AMOUNT = property.getNumber("Laser_amount")
 local TICK_DELAY = property.getNumber("Laser_tick_offset")
+local POINT_MIN_DENSITY_SQUARED = property.getNumber("Point_Min_Density_Squared")
 local OFFSET_GPS_TO_LASER = {}
 local LASER_ORIENTAION_MATRIX = {}
 for i = 1, LASER_AMOUNT do -- laser(s) config init
@@ -155,7 +159,7 @@ function onTick()
 
                 -- density filter
                 local nn = kd_tree.IKDTree_nearestNeighbors(laser_xyz[i], 1)
-                if nn[1] == nil or kd_tree.pointsLen2[nn[1]] > 0.01 then -- If nearest point in pointcloud is not too near then accept point
+                if nn[1] == nil or kd_tree.pointsLen2[nn[1]] > POINT_MIN_DENSITY_SQUARED then -- If nearest point in pointcloud is not too near then accept point
                     kd_tree.IKDTree_insert(points.insert(laser_xyz[i]));
                 else
                     vec_init3d(laser_xyz[i]) -- Set xyz to 0
