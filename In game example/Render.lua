@@ -94,8 +94,9 @@ local px_cx, px_cy = width/2, height/2
 local px_cx_pos, px_cy_pos = px_cx + property.getNumber("pxOffsetX"), px_cy + property.getNumber("pxOffsetY")
 
 -- Getting near and far to linearize depth
--- zNear * zFar / (zFar + d * (zNear - zFar))
-local near, far = property.getNumber("near"), property.getNumber("far")
+-- zNear * zFar / (zFar + depth[0;1] * (zNear - zFar)) = dist[0;zFar]
+-- zNear / (zFar + depth[0;1] * (zNear - zFar)) = linear_depth[0;1]
+local near, far = property.getNumber("near") + 0.47, property.getNumber("far")
 local n_mul_f = near*far
 local n_sub_f = near-far
 local cameraTransform = {}
@@ -284,6 +285,13 @@ function onTick()
     end
 end
 
+local COLOR_GRADIANT_R ,COLOR_GRADIANT_G ,COLOR_GRADIANT_B
+--- green, blue, red, yellow, white
+COLOR_GRADIANT_R = {0,   0,   255, 255, 255}
+COLOR_GRADIANT_G = {255, 0,   0,   255, 255}
+COLOR_GRADIANT_B = {0,   255, 0,   0,   255}
+
+
 function onDraw()
     if isRendering then
         frame = frame + 1
@@ -291,19 +299,34 @@ function onDraw()
         -- laserPoints
         WorldToScreen_points(cameraTransform, laserPoints)
         local isVisible, sx, sy, sz, laserInView = laserPoints.isVisible, laserPoints.sx, laserPoints.sy, laserPoints.sz, 0
+        local linear_depth, distance, scaledT, index, newT, oneMinusT, indexPlusOne
         for i = 1, #laserPoints.x do
             if isVisible[i] then
                 laserInView = laserInView + 1
-                -- zNear * zFar / (zFar + d * (zNear - zFar))
-                local dis = n_mul_f / (far + sz[i]*n_sub_f)
-                screen.setColor(dis, 255/dis, dis*10%255, clamp(500-dis*20, 100, 240))
-                screen.drawCircleF(sx[i], sy[i], clamp(7 - dis, 1, 6.5))
+
+                linear_depth = near / (far + sz[i]*n_sub_f) -- [0; 1]
+                distance = linear_depth*far
+
+                -- linear color gradiant between near and far plane
+                scaledT = linear_depth * 4 -- linear_depth * (#COLOR_GRADIANT_R - 1)
+                index = math.floor(scaledT)
+                newT = scaledT - index
+                oneMinusT = 1 - newT
+                index = index + 1
+                indexPlusOne = index + 1
+                screen.setColor(
+                    COLOR_GRADIANT_R[index] * oneMinusT + COLOR_GRADIANT_R[indexPlusOne] * newT,    -- math.min(distance, 255),
+                    COLOR_GRADIANT_G[index] * oneMinusT + COLOR_GRADIANT_G[indexPlusOne] * newT,    -- 1e4 / distance,
+                    COLOR_GRADIANT_B[index] * oneMinusT + COLOR_GRADIANT_B[indexPlusOne] * newT,    -- distance * 10 % 255,
+                    clamp(300 - distance, 100, 240)
+                )
+                screen.drawCircleF(sx[i], sy[i], math.max(25 / distance, 1))
 
                 --dis = math.max(10 - dis, 3)
                 --screen.drawRectF(sx[i] - dis, sy[i] - dis, dis, dis)
             end
         end
-        screen.setColor(0, 0, 0, 200)
+        screen.setColor(0, 0, 0, 150)
         screen.drawRectF(0, 0, width, height)
 
         -- triangles
