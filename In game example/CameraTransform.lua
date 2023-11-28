@@ -17,49 +17,32 @@
 do
     ---@type Simulator -- Set properties and screen sizes here - will run once when the script is loaded
     simulator = simulator
-    simulator:setScreen(1, "9x5")
-    simulator:setProperty("w", 288)
-    simulator:setProperty("h", 160)
-    simulator:setProperty("near", 0.25)
-    simulator:setProperty("far", 1000)
-    simulator:setProperty("sizeX", 0.7 * 1.8)
-    simulator:setProperty("sizeY", 0.7)
-    simulator:setProperty("positionOffsetX", 0)
-    simulator:setProperty("positionOffsetY", 0.01)
+    simulator:setScreen(1, "3x3")
+    simulator:setProperty("w", 160)                 -- Pixel width of screen
+    simulator:setProperty("h", 160)                 -- Pixel height of screen
+    simulator:setProperty("near", 0.25)             -- Distance to near plane in meters, but added 0.625 offset later on. So "near" is the distance from the end of (compact) seat model to the screen. I.e how many blocks between (compact) seat and screen divided by 4.
+    simulator:setProperty("far", 1000)              -- Distance to far plane in meters, max render distance
+    simulator:setProperty("sizeX", 0.7)             -- Physical sizeX/width of screen in meters. (Important that it is the actual screen part with pixels and not model width)
+    simulator:setProperty("sizeY", 0.7)             -- Physical sizeY/height of screen in meters. (Important that it is the actual screen part with pixels and not model height)
+    simulator:setProperty("positionOffsetX", 0)     -- Physical offset in the XY plane along X:right in meters.
+    simulator:setProperty("positionOffsetY", 0.01)  -- Physical offset in the XY plane along Y:up in meters. (HUD screen is 0.01 m offset in the model)
 
-    simulator:setProperty("tick", 0)
-
-    simulator:setProperty("GPS_to_camera", "0,0,0")
+    simulator:setProperty("tick", 0)                  -- tick compensation
+    simulator:setProperty("GPS_to_camera", "0, 0, 0") -- Offset from physics sensor block to seat headrest block. (X:right, Y:up, Z:forward)
 
     -- Runs every tick just before onTick; allows you to simulate the inputs changing
     ---@param simulator Simulator Use simulator:<function>() to set inputs etc.
     ---@param ticks     number Number of ticks since simulator started
     function onLBSimulatorTick(simulator, ticks)
+        simulator:setInputBool(1, true) -- isRendering = true
 
-        -- touchscreen defaults
-        local screenConnection = simulator:getTouchScreen(1)
-        simulator:setInputBool(1, true) -- screenConnection.isTouched)
-        --[[
-        simulator:setInputNumber(1, screenConnection.width)
-        simulator:setInputNumber(2, screenConnection.height)
-        simulator:setInputNumber(3, screenConnection.touchX)
-        simulator:setInputNumber(4, screenConnection.touchY)
-        --]]
-
-        simulator:setInputNumber(1, (simulator:getSlider(1) - 0) * 10)
-        simulator:setInputNumber(2, (simulator:getSlider(2) - 0) * 10)
-        simulator:setInputNumber(3, (simulator:getSlider(3) - 0.5) * 25)
-        simulator:setInputNumber(4, (simulator:getSlider(4)) * math.pi*2)
-        simulator:setInputNumber(5, (simulator:getSlider(5)) * math.pi*2)
-        simulator:setInputNumber(6, (simulator:getSlider(6)) * math.pi*2)
-        simulator:setInputNumber(7, simulator:getSlider(7))
-        simulator:setInputNumber(8, simulator:getSlider(8))
-
-        -- NEW! button/slider options from the UI
-        simulator:setInputBool(31, simulator:getIsClicked(1))       -- if button 1 is clicked, provide an ON pulse for input.getBool(31)
-
-        simulator:setInputBool(32, simulator:getIsToggled(2))       -- make button 2 a toggle, for input.getBool(32)
-
+                                                                            -- Debug sliders
+        simulator:setInputNumber(1, (simulator:getSlider(1) - 0) * 10)      -- x position
+        simulator:setInputNumber(2, (simulator:getSlider(2) - 0) * 10)      -- y position
+        simulator:setInputNumber(3, (simulator:getSlider(3) - 0.5) * 25)    -- z position
+        simulator:setInputNumber(4, (simulator:getSlider(4)) * math.pi*2)   -- x rotation
+        simulator:setInputNumber(5, (simulator:getSlider(5)) * math.pi*2)   -- y rotation
+        simulator:setInputNumber(6, (simulator:getSlider(6)) * math.pi*2)   -- z rotation
     end;
 end
 ---@endsection
@@ -69,9 +52,10 @@ end
 
 
 
-
+-- https://github.com/Jumper-44/Stormworks_JumperLib
 require('JumperLib.JL_general')
 require('JumperLib.Math.JL_matrix_transformations')
+
 
 local lookX, lookY, headAzimuthAng, distance, headElevationAng
 local position, linearVelocity, angle, angularVelocity, head_position_offset, cameraTranslation, tempVec1_3d, tempVec2_3d = {}, {}, {}, {}, {}, {}, {}, {}
@@ -80,14 +64,14 @@ local isRendering, isFemale, OFFSET = false, false, {}
 
 --#region Settings
 local SCREEN = {
-    w = property.getNumber("w"),
-    h = property.getNumber("h"),
-    near = property.getNumber("near") + 0.625,
-    far = property.getNumber("far"),
-    sizeX = property.getNumber("sizeX"),
-    sizeY = property.getNumber("sizeY"),
-    positionOffsetX = property.getNumber("positionOffsetX"),
-    positionOffsetY = property.getNumber("positionOffsetY")
+    w = property.getNumber("w"),                                -- Pixel width of screen
+    h = property.getNumber("h"),                                -- Pixel height of screen
+    near = property.getNumber("near") + 0.625,                  -- Distance to near plane in meters, but added 0.625 offset. So "near" is the distance from the end of (compact) seat model to the screen. I.e how many blocks between (compact) seat and screen divided by 4.
+    far = property.getNumber("far"),                            -- Distance to far plane in meters, max render distance
+    sizeX = property.getNumber("sizeX"),                        -- Physical sizeX/width of screen in meters. (Important that it is the actual screen part with pixels and not model width)
+    sizeY = property.getNumber("sizeY"),                        -- Physical sizeY/height of screen in meters. (Important that it is the actual screen part with pixels and not model height)
+    positionOffsetX = property.getNumber("positionOffsetX"),    -- Physical offset in the XY plane along X:right in meters.
+    positionOffsetY = property.getNumber("positionOffsetY")     -- Physical offset in the XY plane along Y:up in meters. (HUD screen is 0.01 m offset in the model)
 }
 
 SCREEN.r = SCREEN.sizeX/2  + SCREEN.positionOffsetX
@@ -95,10 +79,10 @@ SCREEN.l = -SCREEN.sizeX/2 + SCREEN.positionOffsetX
 SCREEN.t = SCREEN.sizeY/2  + SCREEN.positionOffsetY
 SCREEN.b = -SCREEN.sizeY/2 + SCREEN.positionOffsetY
 
-OFFSET.GPS_to_camera = str_to_vec(property.getText("GPS_to_camera"))
-
-OFFSET.tick = property.getNumber("tick")/60
+OFFSET.GPS_to_camera = str_to_vec(property.getText("GPS_to_camera")) -- Offset from physics sensor block to seat headrest block. (X:right, Y:up, Z:forward)
+OFFSET.tick = property.getNumber("tick")/60 -- tick compensation
 --#endregion Settings
+
 
 function onTick()
     isRendering = input.getBool(1)
@@ -108,13 +92,13 @@ function onTick()
     if isRendering then
         do -- calc cameraTransformMatrix
             isFemale = input.getBool(2)
-            vec_init3d(position,        getNumber3(1, 2, 3))
-            vec_init3d(angle,           getNumber3(4, 5, 6))
-            vec_init3d(linearVelocity,  getNumber3(7, 8, 9))
-            vec_init3d(angularVelocity, getNumber3(10, 11, 12))
+            vec_init3d(position,        getNumber3(1, 2, 3))    -- physics sensor
+            vec_init3d(angle,           getNumber3(4, 5, 6))    -- physics sensor
+            vec_init3d(linearVelocity,  getNumber3(7, 8, 9))    -- physics sensor
+            vec_init3d(angularVelocity, getNumber3(10, 11, 12)) -- physics sensor
 
-            -- head_position_offset
-            lookX, lookY = input.getNumber(13), input.getNumber(14)
+            -- head_position_offset (approximation)
+            lookX, lookY = input.getNumber(13), input.getNumber(14) -- lookX|Y from seat
             headAzimuthAng =    clamp(lookX, -0.277, 0.277) * 0.408 * tau -- 0.408 is to make 100° to 40.8°
             headElevationAng =  clamp(lookY, -0.125, 0.125) * 0.9 * tau + 0.404 + math.abs(headAzimuthAng/0.7101) * 0.122 -- 0.9 is to make 45° to 40.5°, 0.404 rad is 23.2°. 0.122 rad is 7° at max yaw.
 
@@ -146,11 +130,11 @@ function onTick()
             vec_add( -- cameraTranslation
                 vec_add(
                     matrix_multVec3d(rotationMatrixZYX, vec_add(OFFSET.GPS_to_camera, head_position_offset, tempVec1_3d), tempVec2_3d), -- XYZ offset to physics sensor
-                    vec_scale(matrix_multVec3d(rotationMatrixZYX, linearVelocity, tempVec1_3d), OFFSET.tick, tempVec1_3d), -- position tick compensation
-                    cameraTranslation --return
+                    vec_scale(matrix_multVec3d(rotationMatrixZYX, linearVelocity, tempVec1_3d), OFFSET.tick, tempVec1_3d),              -- position tick compensation
+                    cameraTranslation -- return
                 ),
-                position, -- XYZ of physics sensor
-                cameraTranslation --return
+                position,         -- XYZ of physics sensor
+                cameraTranslation -- return
             )
 
             vec_scale(cameraTranslation, -1, translationMatrix[4]) -- set translation in translationMatrix
@@ -167,14 +151,14 @@ function onTick()
         end
 
         -- passthrough rig physics GPS and euler angles
-        -- input channel [15;20]
+        -- input channel  [15;20]
         -- output channel [17;22]
         for i = 15, 20 do
-            output.setNumber(i+2, input.getNumber(i))
+            output.setNumber(i + 2, input.getNumber(i))
         end
 
         -- passthrough laser coordinates
-        -- input channel [21;29]
+        -- input channel  [21;29]
         -- output channel [23;31]
         for i = 21, 31 do
             output.setNumber(i + 2, input.getNumber(i))
@@ -188,7 +172,7 @@ end
 
 
 
---[[ Debug
+--[=[ Debug
 -- Quick debug to draw the basis vectors of the world coordinate system to verify cameraTransformMatrix
 
 local axisPoints = {{0,0,0,1}, {1,0,0,1}, {0,1,0,1}, {0,0,1,1}}
@@ -226,4 +210,4 @@ function onDraw()
         end
     end
 end
---]]
+--]=]
