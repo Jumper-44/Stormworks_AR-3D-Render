@@ -20,7 +20,7 @@ do
     simulator:setScreen(1, "3x3")
     simulator:setProperty("w", 160)                 -- Pixel width of screen
     simulator:setProperty("h", 160)                 -- Pixel height of screen
-    simulator:setProperty("near", 0.25)             -- Distance to near plane in meters, but added 0.625 offset later on. So "near" is the distance from the end of (compact) seat model to the screen. I.e how many blocks between (compact) seat and screen divided by 4.
+    simulator:setProperty("near", 0.25)             -- Distance to near plane in meters, but added offset later on. So "near" is the distance from the end of (compact) seat model to the screen. I.e how many blocks between (compact) seat and screen divided by 4.
     simulator:setProperty("far", 1000)              -- Distance to far plane in meters, max render distance
     simulator:setProperty("sizeX", 0.71)            -- Physical sizeX/width of screen in meters. (Important that it is the actual screen part with pixels and not model width)
     simulator:setProperty("sizeY", 0.71)            -- Physical sizeY/height of screen in meters. (Important that it is the actual screen part with pixels and not model height)
@@ -66,7 +66,7 @@ local isRendering, isFemale, OFFSET = false, false, {}
 local SCREEN = {
     w = property.getNumber("w"),                                -- Pixel width of screen
     h = property.getNumber("h"),                                -- Pixel height of screen
-    near = property.getNumber("near") + 0.635,                  -- Distance to near plane in meters, but added 0.625 offset. So "near" is the distance from the end of (compact) seat model to the screen. I.e how many blocks between (compact) seat and screen divided by 4.
+    near = property.getNumber("near") + 0.635,                  -- Distance to near plane in meters, but added offset. So "near" is the distance from the end of (compact) seat model to the screen. I.e how many blocks between (compact) seat and screen divided by 4.
     far = property.getNumber("far"),                            -- Distance to far plane in meters, max render distance
     sizeX = property.getNumber("sizeX"),                        -- Physical sizeX/width of screen in meters. (Important that it is the actual screen part with pixels and not model width)
     sizeY = property.getNumber("sizeY"),                        -- Physical sizeY/height of screen in meters. (Important that it is the actual screen part with pixels and not model height)
