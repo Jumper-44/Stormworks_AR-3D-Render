@@ -74,8 +74,8 @@ The size and position of actual screen with pixels within the model... Picture s
 ### Paremeters Of In Game Camera
 ...TODO
 
-## In game implementation
-![Description of the microcontroller used in: In game example](Pictures\Local Coordinate Space.png)  
+## In game implementation 
+![Description of the microcontroller used in: In game example](<Pictures/Microcontroller Description.png>)  
   
 To implement the camera I decided to split up the process in 2 lua scripts for more breathing room.
 CameraTransform.lua calculates the 4x4 cameraTransformMatrix and sends the 16 numbers of the matrix to the next script, Render.lua, which then only needs the render function using the cameraTransformMatrix and LIDAR points or triangle data to render.
