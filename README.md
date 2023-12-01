@@ -2,9 +2,9 @@
 [Steam Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=2793934450)  
 [Video of workshop vehicle](https://youtu.be/bEB1MxJJ7Qk)  
   
-![Screenshot of the vehicle in game in 1st person, showing the rendering on HUD. On the HUD both LIDAR points and triangles for colored box meshes are visible.](<Pictures\Screenshot 2023-11-29 173559 - 1st_person.png>)  
-![Close up screenshot of the vehicle in game in 3rd person.](<Pictures\Screenshot 2023-11-29 173955 - 3rd_person.png>)  
-  
+![Screenshot of the vehicle in game in 1st person, showing the rendering on HUD. On the HUD both LIDAR points and triangles for colored box meshes are visible.](<Pictures/Screenshot 2023-11-29 173559 - 1st_person.png>)  
+![Close up screenshot of the vehicle in game in 3rd person.](<Pictures/Screenshot 2023-11-29 173955 - 3rd_person.png>)  
+
 ## Theory
 ### Camera Transform
 (Small note is that altho I use the matrices which would be used in a GPU (OpenGL, DirectX or Vulkan) for defining a camera, I haven't played with any GPU API or alike, so I don't really know a lot more than what I explain here.)  
