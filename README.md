@@ -67,10 +67,10 @@ A performance improvement is to only transform each unique vertex to screen spac
 Picture shows the 1x1 HUD with all 32x32 pixels lit and the HUD is surrounded by paint blocks. The paint blocks, which has a 9x9 grid on their face, is used for an absoloute length. Since a block is 0.25 meters then a paintable grid has a length of 0.25/9 meter.  
 Then calculating an estimate of actual screen lengths by counting pixels, which is estimated to a spacing between the model edge and actual screen to be <code>0.02</code> meters at the sides and <code>0.01</code> at the top and <code>0.03</code> at the bottom.  
   
-It is then concluded that the screen size of a HUD is <code>block_model_length - 2\*0.02</code>, and has an offset from the center of the model on the second axis of <code>0.01</code> meters.  
+It is then concluded that the screen size of a HUD is <code>model_length - 2\*0.02</code>, and has an offset from the center of the model on the second axis of <code>0.01</code> meters.  
 So 1x1 HUD <code>sizeX|Y = 0.21</code> meters and 3x3 HUD <code>sizeX|Y = 0.71</code>, with both having a <code>0.01</code> offset on the second axis.  
   
-Other monitors has been estimated to have a screen size calculated by <code>block_model_length - 2\*0.022</code>, but is symmetrical on both axis.  
+Other monitors has been estimated to have a screen size calculated by <code>model_length - 2\*0.022</code>, but is symmetrical on both axis.  
   
 Another small thing, which is accounted for in code is that the screens has a small depth into the model, in which 0.01 meters is used for both screen types. Accurate for HUDs, but other monitors do have a very little more depth, but with screens pixel quantity, then it is not like it really matters or is noticeable.
   
