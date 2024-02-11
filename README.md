@@ -78,7 +78,7 @@ Another small thing, which is accounted for in code is that the screens has a sm
 In the picture a subset of the example vehicle is showed, in which a local coordinate system is overlayed, showing that it is at the center of the block of the seat headrest. This is the block where you want to offset the physics sensor GPS to.
 
 
-### In Game Microcontroller Property Paremeters
+### In Game Microcontroller Property Parameters
 | `Property`      | `Example_Value` | `Description` |
 | --------------- | --------------- | ------------- |
 | w               | 96              | Pixel width of screen. |
@@ -92,7 +92,7 @@ In the picture a subset of the example vehicle is showed, in which a local coord
 | pxOffsetX       | 0               | Optional pixel offset. |
 | pxOffsetY       | 0               | Optional pixel offset. |
 | tick            | 4               | Tick compensation due to tick delay in microcontroller. |
-| GPS_to_camera   | 0, 1, -1        | Offset from physics sensor block to seat headrest block. (X:right, Y:up, Z:forward) |
+| GPS_to_camera   | 0, 0.75, -1     | Offset from physics sensor block to seat headrest block, in meters. (X:right, Y:up, Z:forward) |
 
 
 ## In game implementation
